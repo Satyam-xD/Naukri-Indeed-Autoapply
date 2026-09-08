@@ -22,6 +22,7 @@
     "watch": [
       "index.js",
       ".env",
+      "shared",
       "wellfound",
       "naukri",
       "indeed"

@@ -9,12 +9,13 @@
 
 const site               = require('./runner/site');
 const { ensureLoggedIn } = require('./runner/auth');
-const config             = require('./runner/config');
-const { launchBrowser }  = require('./runner/browser');
-const { buildScript }    = require('./runner/script-builder');
-const DailyState         = require('./runner/daily-state');
-const { logApplication } = require('./runner/csv-logger');
 const { runSupervisor }  = require('./runner/supervisor');
+
+const config             = require('../shared/runner/config');
+const { launchBrowser }  = require('../shared/runner/browser');
+const { buildScript }    = require('../shared/runner/script-builder');
+const DailyState         = require('../shared/runner/daily-state');
+const { logApplication } = require('../shared/runner/csv-logger');
 
 const ts = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
 

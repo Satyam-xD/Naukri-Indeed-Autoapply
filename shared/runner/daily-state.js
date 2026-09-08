@@ -1,14 +1,12 @@
 /**
- * indeed/runner/daily-state.js
+ * shared/runner/daily-state.js
  * Tracks daily application counts to enforce the daily quota.
- * Persisted in apply-state-indeed.json.
+ * Persisted in apply-state-<site>.json.
  */
 'use strict';
 
 const fs   = require('fs');
 const path = require('path');
-
-const STATE_FILE = path.join(__dirname, '..', '..', 'apply-state-indeed.json');
 
 function todayKey() {
   const d = new Date();
@@ -16,17 +14,18 @@ function todayKey() {
 }
 
 class DailyState {
-  constructor(siteName = 'indeed', cap = 60) {
-    this.siteName = siteName;
-    this.cap      = cap;
-    this.today    = todayKey();
-    this.data     = this._load();
+  constructor(siteName = 'wellfound', cap = 50) {
+    this.siteName  = siteName;
+    this.cap       = cap;
+    this.today     = todayKey();
+    this.stateFile = path.join(__dirname, '..', '..', `apply-state-${siteName}.json`);
+    this.data      = this._load();
   }
 
   _load() {
     try {
-      if (fs.existsSync(STATE_FILE)) {
-        const raw = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+      if (fs.existsSync(this.stateFile)) {
+        const raw = JSON.parse(fs.readFileSync(this.stateFile, 'utf8'));
         if (raw.date === this.today) return raw;
       }
     } catch (_) {}
@@ -35,7 +34,7 @@ class DailyState {
 
   _save() {
     try {
-      fs.writeFileSync(STATE_FILE, JSON.stringify(this.data, null, 2));
+      fs.writeFileSync(this.stateFile, JSON.stringify(this.data, null, 2));
     } catch (_) {}
   }
 

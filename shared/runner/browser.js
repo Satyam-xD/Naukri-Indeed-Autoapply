@@ -1,13 +1,11 @@
 /**
- * runner/browser.js
+ * shared/runner/browser.js
  * Launches a persistent Chrome/Edge/Chromium context with stealth patches.
  */
 'use strict';
 
 const path = require('path');
 
-// Try playwright-extra with stealth (hides automation fingerprints);
-// fall back to plain playwright-core if the plugin isn't installed.
 let chromium;
 try {
   const { addExtra } = require('playwright-extra');
@@ -22,8 +20,8 @@ try {
 /**
  * launchBrowser — returns an open PersistentContext.
  *
- * @param {string}  profileDir  Path to the Chrome profile directory (relative to project root or absolute).
- * @param {boolean} offscreen   Move the window off-screen so it doesn't steal focus.
+ * @param {string}  profileDir  Path to the Chrome profile directory.
+ * @param {boolean} offscreen   Move window offscreen.
  */
 async function launchBrowser(profileDir, offscreen = false) {
   const fullProfile = path.isAbsolute(profileDir)
@@ -31,43 +29,32 @@ async function launchBrowser(profileDir, offscreen = false) {
     : path.join(__dirname, '..', '..', profileDir);
 
   const baseArgs = [
-    // ── Stealth: hide automation signals ───────────────────────────────────────
-    '--disable-blink-features=AutomationControlled', // removes navigator.webdriver=true
-    '--disable-infobars',                            // hides "Chrome is being controlled" bar
-
-    // ── Removed (these are caught by WAF / Cloudflare):
-    //   --disable-web-security       (disables CORS, a strong bot signal)
-    //   --allow-running-insecure-content
-    //   --no-sandbox                 (not needed on Windows, signals automation)
-
-    // ── Stability / performance ────────────────────────────────────────────────
+    '--disable-blink-features=AutomationControlled',
+    '--disable-infobars',
     '--disable-dev-shm-usage',
     '--disable-popup-blocking',
-    '--disable-extensions-except=',  // allow extensions (stealth plugin needs this)
+    '--disable-extensions-except=',
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-background-timer-throttling',
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',
-
     ...(offscreen ? ['--window-position=-32000,-32000'] : []),
   ];
 
   const baseOpts = {
-    headless:  false,                          // headless mode is blocked by Cloudflare
-    viewport:  { width: 1280, height: 900 },
-    locale:    'en-IN',
+    headless:   false,
+    viewport:   { width: 1280, height: 900 },
+    locale:     'en-IN',
     timezoneId: 'Asia/Kolkata',
-    args: baseArgs,
+    args:       baseArgs,
   };
 
-  // Try installed Chrome → Edge → bundled Chromium in that order
   for (const channel of ['chrome', 'msedge', null]) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const launchOpts = channel ? { ...baseOpts, channel } : baseOpts;
         const ctx = await chromium.launchPersistentContext(fullProfile, launchOpts);
-        // Short settle to ensure context wasn't immediately killed by a duplicate-instance handoff
         await new Promise((r) => setTimeout(r, 800));
         const pages = ctx.pages();
         if (!pages || pages.length === 0) {
@@ -77,7 +64,6 @@ async function launchBrowser(profileDir, offscreen = false) {
         return ctx;
       } catch (e) {
         if (attempt === 1 && channel === 'msedge') {
-          // If Edge is still releasing profile locks from a previous run, give it 2s
           await new Promise((r) => setTimeout(r, 2000));
           continue;
         }

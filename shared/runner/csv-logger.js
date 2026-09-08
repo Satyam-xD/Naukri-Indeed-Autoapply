@@ -1,5 +1,5 @@
 /**
- * indeed/runner/csv-logger.js
+ * shared/runner/csv-logger.js
  * Appends one CSV row per submitted application to applications.csv.
  * UTF-8 BOM is prepended so Excel renders ₹/– correctly.
  */
@@ -41,9 +41,6 @@ function ensureFile() {
   }
 }
 
-/**
- * extractExp — pulls the experience requirement out of freeform text.
- */
 function extractExp(text = '') {
   const m = text.match(/\b(fresher|entry.?level|0[-–1]\s*year|[0-9]+\s*[+-]?\s*[0-9]*\s*\+?\s*(?:years?|yrs?)(?:\s*(?:of\s*)?(?:exp(?:erience)?)?)?)/i);
   return m ? m[0].replace(/\s+/g, ' ').trim() : 'Not specified';
@@ -52,7 +49,7 @@ function extractExp(text = '') {
 /**
  * logApplication — appends one row to applications.csv.
  *
- * @param {string} siteName  e.g. 'indeed'
+ * @param {string} siteName  e.g. 'wellfound' | 'naukri' | 'indeed'
  * @param {object} job       { title, company, expRequired, salary, skills, link, jd }
  */
 function logApplication(siteName, job) {

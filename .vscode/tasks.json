@@ -74,15 +74,51 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
-      "label": "🚀 Run Both — LIVE",
-      "dependsOn": ["🌐 Wellfound — LIVE", "📋 Naukri — LIVE"],
+      "label": "💼 Indeed — LIVE",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "indeed", "--live", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "💼 Indeed — DRY RUN",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "indeed", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "🚀 Run All (3 Platforms) — LIVE",
+      "dependsOn": ["🌐 Wellfound — LIVE", "📋 Naukri — LIVE", "💼 Indeed — LIVE"],
       "dependsOrder": "parallel",
       "problemMatcher": [],
       "group": { "kind": "build", "isDefault": true }
     },
     {
-      "label": "🧪 Run Both — DRY RUN",
-      "dependsOn": ["🌐 Wellfound — DRY RUN", "📋 Naukri — DRY RUN"],
+      "label": "🧪 Run All (3 Platforms) — DRY RUN",
+      "dependsOn": ["🌐 Wellfound — DRY RUN", "📋 Naukri — DRY RUN", "💼 Indeed — DRY RUN"],
       "dependsOrder": "parallel",
       "problemMatcher": []
     },
@@ -106,6 +142,21 @@
       "type": "shell",
       "command": "node",
       "args": ["index.js", "naukri", "login", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "🔑 Login — Indeed",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "indeed", "login", "--no-watch"],
       "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "presentation": {

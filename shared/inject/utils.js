@@ -1,6 +1,6 @@
 // ============================================================
-// INDEED UTILITIES — injected into the browser page.
-// All symbols defined here are in scope for finder.js, apply.js, loop.js.
+// SHARED UTILITIES — injected into the browser page.
+// In-scope for finder.js, apply.js, loop.js across all platforms.
 // ============================================================
 
 function log(...args) {
@@ -99,20 +99,26 @@ function findButtonByText(scope, pattern) {
 
 function cleanTitle(raw) {
   if (!raw) return '';
-  return raw
+  let t = raw
     .replace(/(?:₹|\$|€)\s?[\d.,kLM]+(?:\s?[–-]\s?(?:₹|\$|€)?\s?[\d.,kLM]+)?/gi, '')
-    .replace(/\b(?:Easily apply|Apply with your Indeed Resume|Urgent hiring|Responsive employer|Hiring multiple candidates)\b/gi, '')
-    .replace(/\b(?:Remote only|Remote|On-?site|Hybrid|In office)\b/gi, '')
-    .replace(/\b(?:India|Bengaluru|Bangalore|Delhi|Noida|Hyderabad|Pune|Mumbai|Gurgaon|Gurugram)\b/gi, '')
+    .replace(/\b(?:Easily apply|Apply with your Indeed Resume|Urgent hiring|Responsive employer|Hiring multiple candidates|Actively Hiring|Recruiter recently active|Posted(?:\s+\d+\+?\s*)?(?:today|yesterday|\d+\s*days?\s*ago|\d+\s*weeks?\s*ago)|icn_repost|No equity)\b/gi, '')
+    .replace(/\b(?:Remote only|Remote\s*\([^)]+\)|Onsite or remote|In office|Everywhere|Hybrid|On-?site)\b/gi, '')
+    .replace(/\b(?:India|Hyderabad|Delhi|Bangalore(?:\s*Urban)?|Bengaluru|Pune|Mumbai|Noida|Gurgaon|Gurugram|United States|New York(?:\s*City)?|San Francisco|California|Boston|Atlanta|Seattle|Chicago|Los Angeles|Europe|Canada|Brazil)\b/gi, '')
+    .replace(/\bL\s*[–-]\s*L\b/gi, '')
     .replace(/[•·|].*/, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  const cut = t.match(/^(.+?)(?:Remote|Onsite|In office|Posted|Recruiter|Actively|$)/i);
+  return (cut ? cut[1] : t).replace(/\s+/g, ' ').trim();
 }
 
 function cleanCompany(raw) {
   if (!raw) return '';
   return raw
     .replace(/^apply to /i, '')
+    .split(/(?:Actively|Hiring|solves|elevates?|employees|Transforming|clinical|Building|Empowering|Leading|Backed|Seed|Series\s*[A-C]|Stealth)/i)[0]
+    .replace(/(?:company )?logo/i, '')
     .replace(/[•·|].*/, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -157,21 +163,21 @@ async function geminiAsk(prompt) {
   }
 }
 
-// ── Cover letter generator ─────────────────────────────────────
+// ── Cover Letter Generator ─────────────────────────────────────
 
 function coverLetter(company, title) {
   const cleanComp = cleanCompany(company);
-  const recipient = cleanComp ? cleanComp + ' Team' : 'Hiring Manager';
-  const skillsList = (CV.skills || '').split(',').slice(0, 6).map((s) => s.trim()).filter(Boolean).join(', ') || 'modern web technologies';
+  const recipient = cleanComp ? cleanComp + ' team' : 'Hiring Manager';
+  const skillsList = (CV.skills || '').split(',').slice(0, 6).map((s) => s.trim()).filter(Boolean).join(', ') || 'modern software engineering';
   const h = CV.highlights || [];
 
   return (
     `Dear ${recipient},\n\n` +
     `I am writing to express my strong interest in the ${title || 'Software Engineer'} role at ${cleanComp || 'your company'}.\n\n` +
     `I am ${CV.name}, a ${CV.currentRole || 'software engineer'} with practical experience in ${skillsList}. ` +
-    `A key highlight from my experience: ${h[0] || 'building end-to-end full stack web applications'}.\n\n` +
+    `A key highlight from my experience: ${h[0] || 'building end-to-end full stack applications'}.\n\n` +
     `${h[1] ? h[1] + ' ' : ''}` +
-    `I am excited about this opportunity because it directly aligns with my technical background, and I can contribute effectively from day one with zero ramp-up time.\n\n` +
+    `I am excited about this role because it directly aligns with my technical background, and I can contribute effectively from day one with zero ramp-up time.\n\n` +
     `Thank you for your consideration.\n\n` +
     `Best regards,\n${CV.name}\n${CV.phone} | ${CV.email}\n${CV.linkedin} | ${CV.github}`
   );
@@ -187,7 +193,7 @@ const FACTUAL_QA = [
   [/company name|current (company|employer)|organi[sz]ation/i,
     CV.company || ''],
   [/years? of (work |professional )?experience|how (long|many years)|total experience/i,
-    '1'],
+    `I have ${CV.yearsOfExperience || '1 year of experience'}. Hands-on with ${(CV.skills || '').split(',').slice(0, 6).join(', ') || 'modern web development'}.`],
   [/experience with (react|node|javascript|python|frontend|backend|web)/i,
     '1'],
   [/notice period|when can you (start|join)|start date|joining/i,
@@ -203,9 +209,9 @@ const FACTUAL_QA = [
   [/cgpa|gpa|percentage|marks|aggregate/i,
     '8.2'],
   [/remote|work from home|wfh/i,
-    'Yes'],
+    'Yes, I am fully set up for remote work and open to hybrid/onsite.'],
   [/reloc|move to|shift to|work from (our )?office|on-?site/i,
-    'Yes'],
+    'Yes, I am open to relocation across India and remote roles globally.'],
   [/authorized to work in india|eligible to work in india|legally authorized/i,
     'Yes'],
   [/visa|sponsorship|require (visa )?sponsorship/i,
@@ -222,7 +228,7 @@ const FACTUAL_QA = [
   [/education|degree|university|college|qualification/i, CV.education || "Bachelor's Degree"],
   [/bachelor|degree level/i, "Bachelor's"],
   [/are you a fresher|fresher candidate/i,
-    'Yes'],
+    'Yes, I am a fresher with hands-on full-stack development experience.'],
   [/laptop|own (device|computer|system)|reliable internet/i,
     'Yes'],
   [/languages? (known|spoken|proficiency)/i,
@@ -244,14 +250,14 @@ const GENERIC_ANSWER = (() => {
 const OPEN_ENDED_RE =
   /why (do you want|are you interested|this role|this company|us|join)|tell (us|me) about yourself|introduce yourself|about you|(biggest|proudest|favorite) (project|achievement)|describe your (experience|background|skills?)|what (can you|do you) bring|strength|weakness|challenge|motivation/i;
 
-const _geminiCache = (() => {
-  try { return new Map(JSON.parse(sessionStorage.getItem('_indeedCacheV1') || '[]')); }
+const _sharedGeminiCache = (() => {
+  try { return new Map(JSON.parse(sessionStorage.getItem('_aaSharedCache') || '[]')); }
   catch (_) { return new Map(); }
 })();
 
 function _cacheSet(k, v) {
-  _geminiCache.set(k, v);
-  try { sessionStorage.setItem('_indeedCacheV1', JSON.stringify([..._geminiCache.entries()].slice(-120))); } catch (_) {}
+  _sharedGeminiCache.set(k, v);
+  try { sessionStorage.setItem('_aaSharedCache', JSON.stringify([..._sharedGeminiCache.entries()].slice(-120))); } catch (_) {}
 }
 
 async function answerQuestion(questionText) {
@@ -261,9 +267,9 @@ async function answerQuestion(questionText) {
 
   if (CONFIG.geminiKey) {
     const cacheKey = questionText.toLowerCase().trim().slice(0, 120);
-    if (_geminiCache.has(cacheKey)) {
+    if (_sharedGeminiCache.has(cacheKey)) {
       log(`  💾 Cached: "${questionText.slice(0, 50)}"`);
-      return _geminiCache.get(cacheKey);
+      return _sharedGeminiCache.get(cacheKey);
     }
 
     const isEssay = OPEN_ENDED_RE.test(questionText);
