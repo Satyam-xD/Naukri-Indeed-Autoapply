@@ -1,8 +1,8 @@
 /**
- * wellfound/index.js
- * Wellfound auto-apply module entry point.
+ * indeed/index.js
+ * Indeed auto-apply module entry point.
  * Can be run directly:
- *   node wellfound/index.js [--live] [login]
+ *   node indeed/index.js [--live] [login]
  * Or imported by the root runner.
  */
 'use strict';
@@ -16,10 +16,13 @@ const DailyState         = require('./runner/daily-state');
 const { logApplication } = require('./runner/csv-logger');
 const { runSupervisor }  = require('./runner/supervisor');
 
-const ts = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+const ts = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+};
 
 /**
- * runWellfound — executes the Wellfound auto-apply workflow.
+ * runIndeed — executes the Indeed auto-apply workflow.
  *
  * @param {object} [options]
  * @param {boolean} [options.live]
@@ -27,18 +30,18 @@ const ts = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.g
  * @param {boolean} [options.offscreen]
  * @param {Set} [options.openContexts]
  */
-async function runWellfound(options = {}) {
+async function runIndeed(options = {}) {
   const live       = options.live       ?? process.argv.includes('--live');
   const loginMode  = options.loginMode  ?? process.argv.includes('login');
   const offscreen  = options.offscreen  ?? process.argv.includes('--offscreen');
   const contexts   = options.openContexts;
 
-  const siteLog = (msg) => console.log(`[${ts()}] [wellfound] ${msg}`);
+  const siteLog = (msg) => console.log(`[${ts()}] [indeed] ${msg}`);
   siteLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  siteLog('🚀 WELLFOUND runner starting');
+  siteLog('🚀 INDEED runner starting');
   siteLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const dayState = new DailyState('wellfound', site.dailyCap);
+  const dayState = new DailyState('indeed', site.dailyCap);
 
   if (!loginMode && dayState.atCap) {
     siteLog(`Daily cap of ${site.dailyCap} already reached (${dayState.count} today) — skipping.`);
@@ -57,17 +60,17 @@ async function runWellfound(options = {}) {
   try {
     if (loginMode) {
       await mainPage.goto(site.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {});
-      siteLog('Browser open — log in to Wellfound, then CLOSE the window.');
+      siteLog('Browser open — log in to Indeed, then CLOSE the browser window.');
       siteLog('Session saved to: ' + site.profile);
       await new Promise((res) => ctx.on('close', res));
-      siteLog('Session saved for Wellfound.');
+      siteLog('Session saved for Indeed.');
       return;
     }
 
     await ensureLoggedIn(mainPage, site, config.CREDS, siteLog);
 
     const script = buildScript({
-      site:            'wellfound',
+      site:            'indeed',
       CV:              config.CV,
       geminiKey:       config.geminiKey,
       dryRun:          !live,
@@ -86,25 +89,24 @@ async function runWellfound(options = {}) {
       target:         dayState.target,
       live,
       dayState,
-      logApplication: (job) => logApplication('wellfound', job),
+      logApplication: (job) => logApplication('indeed', job),
       log:            siteLog,
     });
 
   } finally {
-    siteLog('Closing Wellfound browser...');
+    siteLog('Closing Indeed browser...');
     try { await ctx.close(); } catch (_) {}
     if (contexts) contexts.delete(ctx);
   }
 }
 
-// Standalone execution support: node wellfound/index.js
 if (require.main === module) {
   (async () => {
-    await runWellfound();
+    await runIndeed();
   })().catch((err) => {
-    console.error(`[wellfound FATAL] ${err.message}`);
+    console.error(`[indeed FATAL] ${err.message}`);
     process.exit(1);
   });
 }
 
-module.exports = { runWellfound, site };
+module.exports = { runIndeed, site };

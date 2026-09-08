@@ -16,7 +16,7 @@ const DailyState         = require('./runner/daily-state');
 const { logApplication } = require('./runner/csv-logger');
 const { runSupervisor }  = require('./runner/supervisor');
 
-const ts = () => new Date().toLocaleString('en-IN');
+const ts = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
 
 /**
  * runNaukri — executes the Naukri auto-apply workflow.

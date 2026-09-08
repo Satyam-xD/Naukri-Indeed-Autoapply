@@ -1,0 +1,120 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🌐 Wellfound — LIVE",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "wellfound", "--live", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "🌐 Wellfound — DRY RUN",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "wellfound", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "📋 Naukri — LIVE",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "naukri", "--live", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "📋 Naukri — DRY RUN",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "naukri", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "close": false
+      },
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "🚀 Run Both — LIVE",
+      "dependsOn": ["🌐 Wellfound — LIVE", "📋 Naukri — LIVE"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "🧪 Run Both — DRY RUN",
+      "dependsOn": ["🌐 Wellfound — DRY RUN", "📋 Naukri — DRY RUN"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "🔑 Login — Wellfound",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "wellfound", "login", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "🔑 Login — Naukri",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "naukri", "login", "--no-watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    }
+  ]
+}

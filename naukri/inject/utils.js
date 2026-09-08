@@ -331,27 +331,48 @@ const OPEN_ENDED_RE =
 /**
  * answerQuestion — answers form questions.
  * Known fields are answered instantly from FACTUAL_QA (no API calls).
- * Gemini is ONLY called for open-ended essay-style questions.
- * Short factual unknowns fall back to GENERIC_ANSWER immediately.
+ * ALL other unknown questions are sent to Gemini API, with sessionStorage caching.
  */
+
+// Cache Gemini answers for this session to avoid re-asking the same question
+const _geminiCache = (() => {
+  try { return new Map(JSON.parse(sessionStorage.getItem('_aaCacheV1') || '[]')); }
+  catch (_) { return new Map(); }
+})();
+function _cacheSet(k, v) {
+  _geminiCache.set(k, v);
+  try { sessionStorage.setItem('_aaCacheV1', JSON.stringify([..._geminiCache.entries()].slice(-120))); } catch (_) {}
+}
+
 async function answerQuestion(questionText) {
   // 1. Check known fields first (instant, 0 API calls)
   for (const [pattern, answer] of FACTUAL_QA) {
     if (pattern.test(questionText)) return answer || '';
   }
 
-  // 2. Only call Gemini for genuinely open-ended / essay questions.
-  //    Simple short factual unknowns return GENERIC_ANSWER directly —
-  //    this avoids burning API quota and getting bad answers on numeric/select fields.
-  if (CONFIG.geminiKey && OPEN_ENDED_RE.test(questionText)) {
-    log(`  🤖 Calling Gemini for open-ended question: "${questionText.slice(0, 50)}..."`);
+  // 2. Send ALL unmatched questions to Gemini (with cache)
+  if (CONFIG.geminiKey) {
+    const cacheKey = questionText.toLowerCase().trim().slice(0, 120);
+    if (_geminiCache.has(cacheKey)) {
+      log(`  💾 Cached: "${questionText.slice(0, 50)}"`);
+      return _geminiCache.get(cacheKey);
+    }
+
+    const isEssay = OPEN_ENDED_RE.test(questionText);
+    log(`  🤖 Gemini answering ${isEssay ? 'essay' : 'factual'} question: "${questionText.slice(0, 60)}"`);
     const ans = await geminiAsk(
-      `Answer this job application question on behalf of ${CV.name}.\n` +
+      `You are filling a job application form on behalf of ${CV.name}.\n` +
       `Question: "${questionText}"\n\n` +
       `Candidate Profile:\n${CV_SUMMARY}\n\n` +
-      `Rules: Answer in first person, 2-4 sentences, professional tone, no markdown, no bullet points. Be concise and relevant to the candidate profile.`
+      (isEssay
+        ? `Rules: Answer in first person, 2-4 sentences, professional tone, no markdown, no bullet points. Be concise and relevant to the profile.`
+        : `Rules: Give only the direct answer value — no explanation, no sentences, just the bare answer (e.g. a number, a city name, a short phrase). If it is a yes/no question answer "Yes" or "No". Match the format expected by the field.`)
     );
-    if (ans) return ans;
+    if (ans) {
+      const result = ans.trim();
+      _cacheSet(cacheKey, result);
+      return result;
+    }
   }
 
   return GENERIC_ANSWER;

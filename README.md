@@ -187,45 +187,33 @@ GEMINI_KEY="your_gemini_api_key_here"
 Launch Chrome once to log in and save your session cookies:
 
 ```powershell
+### 3. One-Time Login
+
+```powershell
+# Log in to all platforms sequentially
+node index.js all login
+# or individually:
 node index.js wellfound login
-# or
-npm run login
+node index.js naukri login
+node index.js indeed login
 ```
 
-1. Chrome opens on `https://wellfound.com/login`.
-2. Sign in to your Wellfound account.
+1. Chrome opens on the login page for each platform.
+2. Sign in to your account.
 3. Once logged in, close the browser window.
-4. Your session is saved to `.wellfound-chrome-profile/` for all future runs.
+4. Your sessions are saved to `.wellfound-chrome-profile/`, `.naukri-chrome-profile/`, and `.indeed-chrome-profile/` for all future automated runs.
 
-### 4. Dry Run Mode
+### 4. Single-Click 3-Platform Live Run
 
-Test the applier safely without submitting any applications:
+You can launch all 3 platforms (Wellfound + Naukri + Indeed) in parallel split terminals with a single click or command:
 
-```powershell
-node index.js wellfound
-# or
-npm run dry
-```
-
-Watch the runner fill cover letters and extra questions in real time. In dry run mode, the script does **not** click the final Submit button.
-
-### 5. Live Mode
-
-When ready to submit real applications:
-
-```powershell
-node index.js wellfound --live
-# or
-npm start
-```
-
-To run offscreen in the background without stealing window focus:
-
-```powershell
-node index.js wellfound --live --offscreen
-# or
-npm run offscreen
-```
+- **Double-click `start-all.bat`** in the root folder, OR
+- Run in terminal:
+  ```powershell
+  npm start
+  # or
+  node index.js all --live
+  ```
 
 ---
 
@@ -233,10 +221,20 @@ npm run offscreen
 
 | Command | NPM Script | Description |
 |---|---|---|
-| `node index.js wellfound login` | `npm run login` | Opens browser for manual login and saves cookie session |
-| `node index.js wellfound` | `npm run dry` | **Dry run**: Fills forms and logs actions without submitting |
-| `node index.js wellfound --live` | `npm start` | **Live mode**: Automatically applies and submits applications |
-| `node index.js wellfound --live --offscreen` | `npm run offscreen` | Runs live mode offscreen without stealing active window focus |
+| `start-all.bat` | — | **One-click**: Launches Wellfound, Naukri & Indeed simultaneously |
+| `node index.js all --live` | `npm start` | **All Platforms Live**: Runs Wellfound, Naukri, and Indeed in parallel |
+| `node index.js all` | `npm run dry` | **All Platforms Dry Run**: Tests all 3 platforms without submitting |
+| `node index.js all login` | `npm run login` | Opens browser sequentially to log in to all platforms |
+| `node index.js indeed --live` | `npm run indeed` | **Indeed Live**: Runs auto-applier on Indeed |
+| `node index.js indeed` | `npm run dry:indeed` | **Indeed Dry Run**: Tests Indeed without submitting |
+| `node index.js indeed login` | `npm run login:indeed` | One-time login to Indeed |
+| `node index.js naukri --live` | `npm run naukri` | **Naukri Live**: Runs auto-applier on Naukri |
+| `node index.js naukri` | `npm run dry:naukri` | **Naukri Dry Run**: Tests Naukri without submitting |
+| `node index.js naukri login` | `npm run login:naukri` | One-time login to Naukri |
+| `node index.js wellfound --live` | `npm run wellfound` | **Wellfound Live**: Runs auto-applier on Wellfound |
+| `node index.js wellfound` | `npm run dry:wellfound` | **Wellfound Dry Run**: Tests Wellfound without submitting |
+| `node index.js wellfound login` | `npm run login:wellfound` | One-time login to Wellfound |
+| `node index.js all --live --offscreen` | `npm run offscreen` | Runs all platforms offscreen without stealing active window focus |
 
 ---
 

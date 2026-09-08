@@ -110,6 +110,8 @@ while (applied < CONFIG.MAX_APPLICATIONS) {
       if (!titleOk(r.title, r.rowText)) {
         if (EXP_DEMAND_RE.test(r.rowText) && !FRESHER_ALLOW_RE.test(r.rowText)) expBlocked++;
         else titleBlocked++;
+        // Debug: log first few blocked titles so we can tune the filter
+        if (titleBlocked <= 3) log(`  🚫 title-blocked: "${r.title}"`);
       }
     }
     log(`(feed: ${allRows.length} cards | ${alreadySeen} seen, ${expBlocked} exp-blocked, ${titleBlocked} title-filtered, ${companyDuplicate} same-company)`);

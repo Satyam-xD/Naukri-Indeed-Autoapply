@@ -6,49 +6,69 @@
 /** Job titles we actively target (Satyam's actual tech stack). */
 const TITLE_KEYWORDS = [
   // Entry-level markers
-  'fresher', 'entry level', 'entry-level', 'junior', 'trainee', 'associate', 'associate engineer', 'associate software', 'intern', 'software intern',
+  'fresher', 'entry level', 'entry-level', 'junior', 'trainee', 'associate', 'intern',
   // Full Stack / MERN
   'full stack', 'fullstack', 'full-stack', 'mern',
   // Frontend
-  'frontend', 'front end', 'front-end', 'react', 'next.js', 'nextjs',
+  'frontend', 'front end', 'front-end', 'react', 'next.js', 'nextjs', 'vue',
   // Backend
-  'backend', 'back end', 'back-end', 'node.js', 'node js', 'express',
+  'backend', 'back end', 'back-end', 'node.js', 'node js', 'express', 'api developer',
   // AI / GenAI / LLM
-  'ai engineer', 'ai developer', 'genai', 'gen ai', 'llm', 'ai full stack', 'full stack ai',
-  // General Software Engineering — broad catch for plain "Software Engineer", "Developer" etc.
-  'software engineer', 'software developer', 'web developer', 'sde', 'sde-1', 'sde 1',
-  'javascript developer', 'javascript engineer', 'typescript', 'python developer',
-  // Catch plain "developer" / "engineer" titles that don't include a domain word above
+  'ai engineer', 'ai developer', 'genai', 'gen ai', 'llm', 'ai full stack',
+  // Languages & Frameworks
+  'javascript', 'typescript', 'python', 'golang', 'go developer', 'go engineer',
+  // General Software Engineering
+  'software engineer', 'software developer', 'web developer', 'web engineer',
+  'sde', 'sde-1', 'sde 1', 'sde i',
+  // Broad catch — must come last (caught only after blocklist check)
   'developer', 'engineer',
 ];
 
-/** Titles that indicate seniority or an unrelated domain — skip these. */
-const TITLE_BLOCKLIST = [
-  // Seniority / leadership
-  'senior', 'sr.', 'sr ', 'staff', 'principal', 'director', 'manager',
-  'lead', 'head of', 'head,', 'vp ', 'vice president',
-  // Infrastructure / platform
-  'architect', 'founding engineer', 'devops', 'sre', 'infrastructure',
-  'platform engineer', 'cloud engineer', 'network engineer', 'systems engineer',
-  'reliability engineer', 'security engineer', 'cybersecurity', 'devsecops',
-  // Data / ML Ops (not AI/GenAI roles)
-  'data engineer', 'data scientist', 'analytics', 'business intelligence',
-  'bi developer', 'bi engineer', 'tableau', 'mlops', 'ml engineer',
+/**
+ * Titles that indicate seniority or an unrelated domain — skip these.
+ * Each entry is matched as a word-boundary regex, not a plain substring,
+ * to prevent false positives like 'lead' blocking 'lead developer',
+ * or 'qa' blocking 'qa automation engineer' when user knows automation.
+ */
+const TITLE_BLOCKLIST_RE = [
+  // Seniority / leadership — must be standalone words
+  /\bsenior\b|\bsr\.?\s/i,
+  /\bstaff\s+engineer\b|\bprincipal\b/i,
+  /\bdirector\b|\bmanager\b|\bvp\b|\bvice\s+president\b/i,
+  /\blead\s+(?:engineer|developer|architect|dev)\b|\btech\s+lead\b|\bteam\s+lead\b/i,
+  /\bhead\s+of\b/i,
+  // Infrastructure / platform / ops — these need precise matching
+  /\barchitect\b(?!\s+junior|\s+associate)/i,
+  /\bfounding\s+engineer\b/i,
+  /\bdevops\b|\bsre\b|\bsite\s+reliability\b|\bdevsecops\b/i,
+  /\binfrastructure\s+engineer\b|\bplatform\s+engineer\b/i,
+  /\bcloud\s+engineer\b|\bnetwork\s+engineer\b|\bsystems\s+engineer\b/i,
+  /\bsecurity\s+engineer\b|\bcybersecurity\b/i,
+  // Data / ML (allow AI Engineer / GenAI, block pure data/ML titles)
+  /\bdata\s+engineer\b|\bdata\s+scientist\b|\bdata\s+analyst\b/i,
+  /\bbusiness\s+intelligence\b|\bmlops\b/i,
+  /\bml\s+engineer\b|\bmachine\s+learning\s+engineer\b|\bdeep\s+learning\b/i,
   // QA / Testing
-  'qa ', 'quality assurance', 'test engineer', 'tester', 'automation engineer',
-  // Design / Product / Business
-  'designer', 'ux', 'ui/ux', 'product manager', 'product designer',
-  'sales', 'marketing', 'growth',
-  'teacher', 'trainer', 'tutor', 'instructor', 'coach',
-  'product associate', 'e-commerce', 'ecommerce', 'operations',
-  'customer support', 'customer success', 'business development', 'account manager',
-  // Hardware / specialized
-  '.net', 'c#', 'php', 'ruby', 'golang', 'ios developer', 'android native',
-  'flutter', 'embedded', 'firmware', 'hardware', 'mechanical', 'electrical',
-  'blockchain', 'solidity', 'database administrator', 'dba',
-  'laravel', 'wordpress', 'shopify', 'magento',
-  'machine learning engineer', 'ml engineer', 'deep learning',
-  'forward deployed', 'salesforce', 'sap ',
+  /\bqa\s+engineer\b|\btest\s+engineer\b|\bsdet\b|\bautomation\s+tester\b/i,
+  /\bquality\s+assurance\b/i,
+  // Design / Product
+  /\bux\s+designer\b|\bui\/ux\b|\bproduct\s+designer\b|\bgraphic\s+design\b/i,
+  /\bproduct\s+manager\b/i,
+  // Business / Non-tech
+  /\bsales\s+(?:engineer|manager|executive)\b|\bmarketing\b|\bgrowth\s+hacker\b/i,
+  /\bcustomer\s+success\b|\bcustomer\s+support\b|\bbusiness\s+development\b/i,
+  /\bteacher\b|\btrainer\b|\btutor\b|\binstructor\b|\bcoach\b/i,
+  /\be-?commerce\s+(?:manager|developer)\b/i,
+  /\bsalesforce\b|\bsap\s+/i,
+  // Hardware / specialized stacks we don't use
+  /\.net\s+developer\b|\bc#\s+developer\b|\bphp\s+developer\b/i,
+  /\bruby\s+(?:on\s+rails|developer)\b/i,
+  /\bflutter\s+developer\b|\bandroid\s+(?:native|developer)\b|\bios\s+developer\b/i,
+  /\bembedded\b|\bfirmware\b|\bhardware\b|\bmechanical\b|\belectrical\b/i,
+  /\bblockchain\b|\bsolidity\b|\bweb3\b/i,
+  /\bdba\b|\bdatabase\s+administrator\b/i,
+  /\blaravel\b|\bwordpress\b|\bshopify\b|\bmagento\b/i,
+  /\bforward\s+deployed\b/i,
 ];
 
 const ALREADY_APPLIED_RE = /^applied$/i;
@@ -68,8 +88,9 @@ function titleOk(rawTitle, jobRowText = '') {
   const clean = cleanTitle(rawTitle);
   const lower = clean.toLowerCase();
 
-  // 1. Block senior or unrelated roles based on title only
-  if (TITLE_BLOCKLIST.some((k) => lower.includes(k))) return false;
+  // 1. Block senior or unrelated roles — use regex word-boundary matching
+  //    to avoid false positives like 'lead' blocking 'lead developer'
+  if (TITLE_BLOCKLIST_RE.some((re) => re.test(clean))) return false;
 
   // 2. Skip roles that explicitly require 2+ years of experience.
   //    We use jobRowText (narrow row context) to avoid false positives from company blurbs.
@@ -146,15 +167,16 @@ function findJobRows() {
       .map((el) => el.textContent.trim());
     if (badges.some((t) => ALREADY_APPLIED_RE.test(t))) continue;
 
-    // Skip stale listings (> 14 days or months old)
+    // Skip stale listings (> 30 days old).
+    // The yoe=0 / role URL filters already narrow the pool significantly,
+    // so we can afford to be generous on recency to find more eligible jobs.
     const cardText = card.textContent;
-    if (/\b(?:posted\s+)?(?:about\s+)?(?:[1-9]\d*|over\s+a)\s*months?\s*ago\b/i.test(cardText)) continue;
     const posted = cardText.match(/posted (?:about )?(\d+)\+? ?(hour|day|week|month)s? ago/i);
     if (posted) {
       const n = +posted[1];
       const unit = posted[2].toLowerCase();
       const days = unit === 'hour' ? 0 : unit === 'day' ? n : unit === 'week' ? n * 7 : n * 30;
-      if (days > 14) continue;
+      if (days > 30) continue;
     }
 
     // Company name: find heading or logo within THIS startup card only

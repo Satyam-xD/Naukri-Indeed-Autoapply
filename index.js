@@ -3,13 +3,12 @@
  * index.js — Multi-platform Job Auto-Applier Orchestrator
  * ========================================================
  *
- * Runs Wellfound and Naukri auto-appliers either simultaneously
- * (default) or individually. Automatically wraps with nodemon
- * for live file watching and reload.
+ * When running "all", automatically opens each platform in its
+ * own VS Code terminal tab (if inside VS Code) or a separate
+ * PowerShell window (if run from a plain terminal).
  *
  * USAGE:
- *   npm start                           Runs both simultaneously with live reloading
- *   node index.js all --live            Both Wellfound + Naukri simultaneously
+ *   node index.js all --live            Both Wellfound + Naukri in split terminals
  *   node index.js wellfound --live      Only Wellfound
  *   node index.js naukri --live         Only Naukri
  *   node index.js all login             One-time: log in to both platforms
@@ -18,14 +17,122 @@
  */
 'use strict';
 
-const path = require('path');
+const path           = require('path');
+const { spawn }      = require('child_process');
+
+const SITE_ARG   = (process.argv[2] || 'all').toLowerCase();
+const LOGIN_MODE = process.argv.includes('login');
+const LIVE       = process.argv.includes('--live');
+const OFFSCREEN  = process.argv.includes('--offscreen');
+const NO_WATCH   = process.argv.includes('--no-watch');
+const IS_CHILD   = process.env.AA_CHILD === '1'; // spawned by the orchestrator
+
+const VALID_SITES = ['wellfound', 'naukri', 'indeed', 'all'];
+if (!VALID_SITES.includes(SITE_ARG)) {
+  console.error('Usage: node index.js [wellfound|naukri|indeed|all] [login|--live|--offscreen]');
+  process.exit(1);
+}
+
+// ── Split-terminal orchestration ──────────────────────────────
+// When running "all" from within VS Code (TERM_PROGRAM or VSCODE_PID set),
+// spawn each site as a child process in its OWN new VS Code terminal.
+// Outside VS Code, open each in a separate PowerShell window.
+
+const inVSCode = !!(
+  process.env.TERM_PROGRAM === 'vscode' ||
+  process.env.VSCODE_PID ||
+  process.env.VSCODE_INJECTION ||
+  process.env.VSCODE_CWD
+);
+
+const shouldSplit = SITE_ARG === 'all' && !IS_CHILD && !LOGIN_MODE;
+
+if (shouldSplit) {
+  const ts  = () => new Date().toLocaleString('en-IN');
+  const log = (msg) => console.log(`[${ts()}] [main] ${msg}`);
+
+  const sites = ['wellfound', 'naukri', 'indeed'];
+  const baseArgs = [
+    path.join(__dirname, 'index.js'),
+    '--no-watch',
+    ...(LIVE       ? ['--live']       : []),
+    ...(OFFSCREEN  ? ['--offscreen']  : []),
+  ];
+
+  const labels = {
+    wellfound: '🌐 Wellfound',
+    naukri:    '📋 Naukri',
+    indeed:    '💼 Indeed',
+  };
+
+  log(`🚀 Splitting into ${inVSCode ? 'VS Code' : 'PowerShell'} terminals — one per platform`);
+
+  if (inVSCode) {
+    // ── VS Code: open each site in a NEW PowerShell window ──
+    // VS Code automatically adopts new terminal windows into its Terminal panel.
+    for (const site of sites) {
+      const title   = labels[site];
+      const siteCmd = `node \\"${__dirname.replace(/\\/g, '\\\\')}\\index.js\\" ${site}${LIVE ? ' --live' : ''} --no-watch`;
+
+      spawn(
+        'cmd.exe',
+        [
+          '/c', 'start',
+          `"${title}"`,                        // title bar
+          'powershell.exe',
+          '-NoLogo', '-NoProfile', '-NoExit',
+          '-Command',
+          // PowerShell command: set window title, change dir, run
+          `$Host.UI.RawUI.WindowTitle = '${title}'; Set-Location '${__dirname}'; ${siteCmd.replace(/\\"/g, '"')}`,
+        ],
+        {
+          detached: true,
+          stdio:    'ignore',
+          env:      { ...process.env, AA_CHILD: '1', AA_SITE: site },
+        }
+      ).unref();
+
+      log(`  ↗ Opened terminal: ${title}`);
+    }
+
+  } else {
+    // ── Plain terminal: open a new PowerShell window for each site ──
+    for (const site of sites) {
+      const title   = labels[site];
+      const siteCmd = `node \\"${path.join(__dirname, 'index.js').replace(/\\/g, '\\\\')}\\" ${site}${LIVE ? ' --live' : ''} --no-watch`;
+
+      spawn(
+        'cmd.exe',
+        [
+          '/c',
+          'start',
+          `"${title}"`,                        // window title
+          'powershell.exe',
+          '-NoLogo', '-NoProfile', '-NoExit',
+          '-Command',
+          `cd '${__dirname}'; ${siteCmd.replace(/\\"/g, '"')}`,
+        ],
+        {
+          detached: true,
+          stdio:    'ignore',
+          env:      { ...process.env, AA_CHILD: '1', AA_SITE: site },
+        }
+      ).unref();
+    }
+
+    log('✅ Opened separate PowerShell windows for each platform.');
+    log('   🌐 Wellfound — running in its own window');
+    log('   📋 Naukri    — running in its own window');
+    log('   💼 Indeed    — running in its own window');
+  }
+
+  return;
+}
 
 // ── Auto-wrap with nodemon for live hot-reloading ─────────────
-const isLoginMode = process.argv.includes('login');
-const noWatch     = process.argv.includes('--no-watch');
-const isChild     = process.env.NODEMON_ACTIVE === '1';
+const isChild = IS_CHILD || process.env.NODEMON_ACTIVE === '1';
 
-if (!isLoginMode && !noWatch && !isChild) {
+if (!isChild && !NO_WATCH && !LOGIN_MODE) {
   process.env.NODEMON_ACTIVE = '1';
   let nodemon;
   try {
@@ -35,19 +142,18 @@ if (!isLoginMode && !noWatch && !isChild) {
   }
 
   if (nodemon) {
-    const args = process.argv.slice(2);
-    if (args.length === 0) {
-      args.push('all', '--live');
-    }
+    const args = process.argv.slice(2).filter((a) => a !== '--no-watch');
+    if (args.length === 0) args.push(SITE_ARG, '--live');
 
     nodemon({
       script: path.join(__dirname, 'index.js'),
-      args,
-      watch:  ['index.js', '.env', 'wellfound', 'naukri'],
+      args:   [...args, '--no-watch'],
+      watch:  ['index.js', '.env', 'wellfound', 'naukri', 'indeed'],
       ext:    'js,json,env',
       ignore: [
         '.wellfound-chrome-profile/**',
         '.naukri-chrome-profile/**',
+        '.indeed-chrome-profile/**',
         '.*-chrome-profile/**',
         'apply-state-*.json',
         'applications*.csv',
@@ -75,20 +181,10 @@ if (!isLoginMode && !noWatch && !isChild) {
 // ── Platform Runners ──────────────────────────────────────────
 const { runWellfound } = require('./wellfound');
 const { runNaukri }    = require('./naukri');
-
-const SITE_ARG   = (process.argv[2] || 'all').toLowerCase();
-const LOGIN_MODE = process.argv.includes('login');
-const LIVE       = process.argv.includes('--live');
-const OFFSCREEN  = process.argv.includes('--offscreen');
-
-const VALID_SITES = ['wellfound', 'naukri', 'all'];
-if (!VALID_SITES.includes(SITE_ARG)) {
-  console.error('Usage: node index.js [wellfound|naukri|all] [login|--live|--offscreen]');
-  process.exit(1);
-}
+const { runIndeed }    = require('./indeed');
 
 const ts  = () => new Date().toLocaleString('en-IN');
-const log = (msg) => console.log(`[${ts()}] [main] ${msg}`);
+const log = (msg) => console.log(`[${ts()}] [${SITE_ARG}] ${msg}`);
 
 process.on('unhandledRejection', (e) =>
   log(`unhandledRejection (ignored): ${String(e?.message || e).split('\n')[0]}`)
@@ -117,12 +213,13 @@ async function closeAllBrowsers() {
 const runners = {
   wellfound: (opts) => runWellfound({ ...opts, openContexts }),
   naukri:    (opts) => runNaukri({ ...opts, openContexts }),
+  indeed:    (opts) => runIndeed({ ...opts, openContexts }),
 };
 
 // ── Main Orchestrator ─────────────────────────────────────────
 (async () => {
   const sitesToRun = SITE_ARG === 'all'
-    ? ['wellfound', 'naukri']
+    ? ['wellfound', 'naukri', 'indeed']
     : [SITE_ARG];
 
   const opts = { live: LIVE, loginMode: LOGIN_MODE, offscreen: OFFSCREEN };
@@ -133,9 +230,6 @@ const runners = {
       await runners[s](opts);
     }
   } else {
-    if (sitesToRun.length > 1) {
-      log('🚀 Launching WELLFOUND + NAUKRI simultaneously in parallel!');
-    }
     await Promise.all(sitesToRun.map((s) => runners[s](opts)));
   }
 

@@ -142,7 +142,9 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
 
     // Live 1-second countdown timer: update in place on the same terminal line
     if (clean.startsWith('⏳ [Timer]')) {
-      process.stdout.write(`\r[${new Date().toLocaleString('en-IN')}] [${site.name}]   ${clean}   `);
+      const now = new Date();
+      const isoTs = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      process.stdout.write(`\r[${isoTs}] [${site.name}]   ${clean}   `);
       state.lastWasTimer = true;
       return;
     }
@@ -216,7 +218,19 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
 
   // Re-inject the script on every navigation that matches our site
   page.on('load', async () => {
-    if (!site.injectOn(page.url())) return;
+    const currentUrl = page.url();
+
+    // If clicking Apply navigated to an external site, go back to the search URL
+    if (!site.injectOn(currentUrl)) {
+      if (/^https?:\/\//i.test(currentUrl) && !/naukri\.com/i.test(currentUrl)) {
+        const fallbackUrl = state.searchUrlFn ? state.searchUrlFn() : site.searches[0];
+        log(`⚠ External redirect detected (${currentUrl.slice(0, 60)}...) — returning to search`);
+        await page.goto(fallbackUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
+        state.lastActivity = Date.now();
+      }
+      return;
+    }
+
     state.lastActivity = Date.now();
     await page.evaluate(script).catch((e) =>
       log(`⚠ [load] Script re-injection failed: ${e.message.split('\n')[0]}`)
@@ -250,17 +264,32 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
     lastActivity: Date.now(),
     lastWasTimer: false,
     pendingJob:   null,
+    // Allows wirePage's load handler to resolve the current search URL
+    searchUrlFn:  () => site.searches[searchIdx] || site.searches[0],
   };
 
   wirePage({ page: mainPage, site, script, live, target, dayState, logApplication, log, state });
 
-  // Close any unexpected extra tabs (the injected script blocks window.open,
-  // but just in case Naukri's service worker or extension opens one)
+  // Handle unexpected extra tabs.
+  // • New tabs on naukri.com: Naukri's Apply button sometimes opens the apply
+  //   flow in a new tab (target="_blank"). Inject our script there too so the
+  //   application can complete, then close it and reload main page afterward.
+  // • Truly external tabs (non-naukri.com): close immediately.
   ctx.on('page', async (newPage) => {
     if (newPage === mainPage) return;
     const tabUrl = newPage.url() || '';
-    log(`Extra tab detected (closing): ${tabUrl.slice(0, 80)}`);
-    await newPage.close().catch(() => {});
+
+    if (/naukri\.com/i.test(tabUrl)) {
+      // Naukri-domain tab: wait for it to fully load, then redirect to main
+      log(`Naukri apply tab opened: ${tabUrl.slice(0, 80)} — redirecting to main tab`);
+      await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+      // Navigate main page to the same Naukri URL so the script runs there
+      await mainPage.goto(tabUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+      await newPage.close().catch(() => {});
+    } else {
+      log(`External tab closed: ${tabUrl.slice(0, 80)}`);
+      await newPage.close().catch(() => {});
+    }
   });
 
   // Kick off the first injection on the already-open page
@@ -280,8 +309,20 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
     log(`[Supervisor] ${state.submitted}/${target} submitted | ${remainingMins}m left`);
 
     if (await isFinished(mainPage)) {
-      log('Injected script reported all search pages completed — ending supervisor loop.');
-      break;
+      // Injected script exhausted this search URL — rotate to the next one
+      await mainPage.evaluate('window.__aaFinished = false').catch(() => {});
+      searchIdx++;
+      if (searchIdx >= site.searches.length) {
+        log('All search URLs exhausted for today.');
+        break;
+      }
+      const nextUrl = site.searches[searchIdx];
+      log(`🔄 Search URL exhausted — rotating → ${nextUrl}`);
+      await mainPage.goto(nextUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch((e) =>
+        log(`⚠ [rotate] Navigation to ${nextUrl} failed: ${e.message.split('\n')[0]}`)
+      );
+      state.lastActivity = Date.now();
+      continue;
     }
 
     if (await isBusy(mainPage)) continue; // injected script is still running
