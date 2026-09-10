@@ -16,7 +16,8 @@
     "login:wellfound": "node index.js wellfound login",
     "login:naukri":    "node index.js naukri login",
     "login:indeed":    "node index.js indeed login",
-    "offscreen":       "node index.js all --live --offscreen"
+    "offscreen":       "node index.js all --live --offscreen",
+    "dashboard":       "node dashboard/server.js"
   },
   "nodemonConfig": {
     "watch": [
@@ -36,6 +37,8 @@
       "apply-state-*.json",
       "applications*.csv",
       "qa-bank.json*",
+      "resumes/**",
+      "dashboard/**",
       "*.png",
       "node_modules/**"
     ]

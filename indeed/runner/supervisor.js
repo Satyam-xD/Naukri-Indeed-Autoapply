@@ -6,8 +6,9 @@
  */
 'use strict';
 
-const path      = require('path');
-const qaManager = require('../../shared/runner/qa-manager');
+const path            = require('path');
+const qaManager       = require('../../shared/runner/qa-manager');
+const { getBestResume } = require('../../shared/runner/resume-selector');
 
 const MAX_RUNTIME_MS = 100 * 60 * 1000;  // 100 minutes
 const IDLE_ROTATE_MS = 5 * 60 * 1000;    // 5 minutes (accounts for 18s card-wait in finder)
@@ -109,13 +110,34 @@ async function tryAutoSolveCloudflare(page, log) {
 /**
  * startClickRelay — watches for `window.__aaReadyToSubmit` and fires trusted CDP mouse clicks.
  */
-function startClickRelay(mainPage, log) {
+function startClickRelay(mainPage, log, getJob) {
   let tick = 0;
   const id = setInterval(async () => {
     try {
       tick++;
       if (tick % 6 === 0) {
         await tryAutoSolveCloudflare(mainPage, log).catch(() => {});
+      }
+
+      // Check for resume upload input
+      if (tick % 5 === 0) {
+        try {
+          const hasFileInput = await mainPage.evaluate(() => {
+            const fi = document.querySelector('input[type="file"]');
+            return fi && !fi.disabled && (!fi.files || fi.files.length === 0);
+          }).catch(() => false);
+
+          if (hasFileInput) {
+            const job = typeof getJob === 'function' ? getJob() : null;
+            const resume = getBestResume(job || {});
+            const fiLoc = mainPage.locator('input[type="file"]').first();
+            if (await fiLoc.count() > 0) {
+              await fiLoc.setInputFiles(resume.path);
+              log(`  📄 Attached resume: "${resume.filename}" (${resume.label})`);
+              await mainPage.waitForTimeout(1000);
+            }
+          }
+        } catch (_) {}
       }
 
       const signal = await mainPage.evaluate(() => {
@@ -346,7 +368,7 @@ async function runSupervisor({
   };
 
   wirePage(mainPage, { script, state, site, live, target, dayState, logApplication, log });
-  const relay = startClickRelay(mainPage, log);
+  const relay = startClickRelay(mainPage, log, () => state.pendingJob);
 
   // Smart Extra Tabs Handler:
   // Indeed opens the apply flow in a new tab (smartapply.indeed.com or beta/indeedapply).
@@ -369,7 +391,7 @@ async function runSupervisor({
         await mainPage.evaluate('window.__aaTabInFlight = true').catch(() => {});
 
         wirePage(newPage, { script, state, site, live, target, dayState, logApplication, log });
-        const tabRelay = startClickRelay(newPage, log);
+        const tabRelay = startClickRelay(newPage, log, () => state.pendingJob);
 
         try {
           await newPage.evaluate(script).catch((e) =>

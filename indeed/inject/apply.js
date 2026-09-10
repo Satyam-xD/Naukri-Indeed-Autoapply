@@ -449,6 +449,18 @@ async function applyOnIndeedJob(cardObj) {
   window.__aaTabCompleted = false;
   window.__aaTabInFlight = false;
 
+  // Signal CDP mouse click relay for trusted hardware click
+  try {
+    const rect = applyBtn.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      window.__aaReadyToSubmit = {
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2),
+        label: btnText,
+      };
+    }
+  } catch (_) {}
+
   applyBtn.click();
 
   // Wait for:

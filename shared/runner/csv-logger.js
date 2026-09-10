@@ -23,8 +23,12 @@ const SKILL_LIST = [
 ];
 
 function matchSkills(text = '') {
-  const l = text.toLowerCase();
-  return SKILL_LIST.filter((s) => l.includes(s.toLowerCase())).join('; ');
+  if (!text) return '';
+  return SKILL_LIST.filter((s) => {
+    const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[^a-zA-Z0-9_#+])${escaped}(?:$|[^a-zA-Z0-9_#+])`, 'i');
+    return re.test(text);
+  }).join('; ');
 }
 
 function csvEscape(v) {

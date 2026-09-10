@@ -1,10 +1,11 @@
-# 🚀 Wellfound Auto-Apply (v2.0)
+# 🚀 Auto-Apply Command Center (v2.5)
 
-> Automated, intelligent job application system for [Wellfound](https://wellfound.com) (formerly AngelList Talent) built with **Playwright**, **Local AI (Ollama)**, and **Google Gemini**.
+> Autonomous, intelligent multi-platform job application system for **Wellfound**, **Naukri**, and **Indeed** built with **Playwright**, **Stealth CDP Automation**, **Local AI / Gemini**, a **Dynamic Q&A Knowledge Bank**, and a **Real-Time Web Dashboard**.
 
 [![Repository](https://img.shields.io/badge/GitHub-Satyam--xD%2FWellfound--Apply-blue?style=flat&logo=github)](https://github.com/Satyam-xD/Wellfound-Apply)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green?style=flat&logo=node.js)](https://nodejs.org)
-[![Playwright](https://img.shields.io/badge/Playwright-Automation-orange?style=flat&logo=playwright)](https://playwright.dev)
+[![Platforms](https://img.shields.io/badge/Platforms-Wellfound%20%7C%20Naukri%20%7C%20Indeed-success?style=flat)](https://wellfound.com)
+[![Dashboard](https://img.shields.io/badge/Dashboard-localhost%3A3456-6366f1?style=flat)](http://localhost:3456)
 [![License: ISC](https://img.shields.io/badge/License-ISC-purple.svg)](https://opensource.org/licenses/ISC)
 
 ---
@@ -13,17 +14,17 @@
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
+- [Local Web Dashboard (Command Center)](#-local-web-dashboard-command-center)
+- [Smart Q&A Bank & Pause Alerts](#-smart-qa-bank--pause-alerts)
+- [Dynamic Resume Switcher](#-dynamic-role-based-resume-switcher)
 - [Architecture](#-architecture)
-- [Requirements](#-requirements)
 - [Getting Started](#-getting-started)
-  - [1. Clone Repository](#1-clone-repository)
-  - [2. Environment Configuration](#2-environment-configuration)
+  - [1. Installation](#1-installation)
+  - [2. Configuration via Dashboard or .env](#2-configuration-via-dashboard-or-env)
   - [3. One-Time Login](#3-one-time-login)
-  - [4. Dry Run Mode](#4-dry-run-mode)
-  - [5. Live Mode](#5-live-mode)
+  - [4. Launch Modes](#4-launch-modes)
 - [CLI & Script Reference](#-cli--script-reference)
-- [Customization Guide](#-customization-guide)
-- [Automated Scheduling (Task Scheduler)](#-automated-scheduling-task-scheduler)
+- [Automated Scheduling (Windows Task Scheduler)](#-automated-scheduling-windows-task-scheduler)
 - [Troubleshooting & FAQ](#-troubleshooting--faq)
 - [Disclaimer](#-disclaimer)
 
@@ -31,105 +32,148 @@
 
 ## 🌟 Overview
 
-**Wellfound Auto-Apply** streamlines and automates the process of finding and applying to matching software engineering jobs on Wellfound:
+**Auto-Apply Command Center** automates the entire software engineering job application workflow across the 3 largest job platforms simultaneously:
 
-1. Launches a stealth Chrome session reusing your saved login.
-2. Traverses role-specific and location-based `/jobs` feeds.
-3. Filters opportunities based on tech stack, experience requirements, and blocklists.
-4. Generates personalized cover letters tailored to the target company and role.
-5. Resolves open-ended questions using **Local Ollama** (with fallback to **Google Gemini 2.5 Flash**).
-6. Fills all form inputs, dropdowns, and checkboxes.
-7. Tracks all submitted applications in `applications.csv` while strictly adhering to a configurable daily cap (default: 50/day).
+1. **Launches stealth Chrome sessions** reusing your existing logins with anti-bot automation flags stripped.
+2. **Filters listings intelligently** by candidate keywords, experience criteria, and senior/lead title blocklists.
+3. **Selects the best resume PDF dynamically** based on job keywords (React, Backend/Python, AI/ML).
+4. **Fills forms with 100% accuracy** using a persistent [qa-bank.json](qa-bank.json) database — pausing and alerting you with an in-page popup if an unknown question appears.
+5. **Automatically solves Cloudflare Turnstile bot challenges** using trusted CDP hardware mouse clicks.
+6. **Streams live execution logs in real time** to a local web dashboard on port `3456`.
+7. **Logs every application** to `applications.csv` while enforcing strict daily safety limits (Wellfound: 50/day, Naukri: 50/day, Indeed: 60/day).
 
 ---
 
 ## ✨ Key Features
 
-- 🎯 **Smart Feed & Role Filtering**:
-  - Matches candidate keywords (Frontend, Backend, Full Stack, MERN, React, Node.js, AI/GenAI, SDE).
-  - Skips senior, lead, and manager positions automatically via title blocklists.
-  - Detects experience mismatch criteria (e.g., `2+ years`, `3-5 years`) to avoid rejected applications.
-  - Automatically skips listings posted more than 14 days ago and previously applied jobs.
+- 🖥️ **All-in-One Local Web Dashboard**:
+  - Live execution feed with real-time Server-Sent Events (SSE).
+  - One-click launch (`Dry Run` or `Live`) for Wellfound, Naukri, or Indeed.
+  - Complete **Profile & Settings** editor that updates `.env` directly from the browser.
+  - Live **Q&A Bank editor** and **Applications CSV explorer** (88+ applications loaded).
 
-- 🧠 **Dual AI Question Answering**:
-  - **Local Ollama** support (100% free, local privacy, e.g. `llama3`) for open-ended questions.
-  - **Google Gemini 2.5 Flash** fallback when Ollama is offline.
-  - Built-in **Factual Q&A Bank** for instant matching (CTC, notice period, relocation, work authorization, social links).
+- ❓ **Persistent Q&A Knowledge Bank (`qa-bank.json`)**:
+  - Prioritizes your exact answers for notice period, salary expectations, CTC, experience, relocation, and skills.
+  - **Zero wrong answers**: When an unknown question appears, the bot pauses, chimes, and opens an alert popup in Chrome & the dashboard. Once answered, it saves permanently to `qa-bank.json` and resumes automatically.
 
-- ✍️ **Dynamic Personalized Cover Letters**:
-  - Generates tailored cover letters on the fly using candidate highlights, specific company names, and applied roles.
+- 📁 **Dynamic Role-Based Resume Switcher**:
+  - Automatically matches job titles and descriptions against customized PDF resumes:
+    - `fullstack.pdf` → React, Next.js, Frontend, MERN, Full Stack
+    - `backend.pdf` → Python, Go, Node.js, FastAPI, SQL, Microservices
+    - `ai_ml.pdf` → AI, GenAI, LLM, RAG, LangChain, Machine Learning
+  - Seamless file upload attachment relay across all 3 platforms.
 
-- 🛡️ **Anti-Bot & Humanized Automation**:
-  - Uses `playwright-extra` and `puppeteer-extra-plugin-stealth`.
-  - Coordinate-based trusted CDP mouse clicks with accessibility-tree fallbacks.
-  - Human-paced randomized delays (60–150s between applications) to protect your account.
+- 🛡️ **Cloudflare Turnstile Auto-Solver & Anti-Bot Protection**:
+  - Automatically detects Turnstile iframes on Indeed and dispatches trusted CDP hardware clicks.
+  - Strips `--enable-automation` and automation extensions to maintain `navigator.webdriver = false`.
 
-- 🔄 **Multi-Search Feed Rotation**:
-  - Cycles through targeted role feeds and geographic search URLs (Remote, Bangalore, Delhi, Hyderabad, Pune, etc.) when a feed runs dry or reaches idle limits.
-
-- 📴 **Offscreen Execution**:
-  - Optional `--offscreen` mode to run Chrome without stealing your desktop focus.
-
-- 📊 **Tracking & Safety Caps**:
-  - Enforces a safe daily cap (default 50/day) tracked in `apply-state-wellfound.json`.
-  - Logs all submitted applications with details (Role, Company, Salary, JD, URL) to `applications.csv`.
-  - Default **DRY RUN** mode fills forms without submitting so you can preview everything safely.
+- ⚡ **Multi-Platform Parallel Execution**:
+  - Run all 3 platforms in parallel with human-paced randomized delays (60–150s) to protect your accounts.
 
 ---
 
-## 📁 Architecture
+## ⚡ Local Web Dashboard (Command Center)
 
-The project has **exactly 2 working folders** (`wellfound/` and `naukri/`), each containing all of its own working code:
+Launch the dashboard at any time with:
 
-```text
-├── wellfound/                   # 📁 Complete self-contained Wellfound working code
-│   ├── index.js                 # Wellfound runner (standalone: node wellfound/index.js)
-│   ├── site.js                  # Search feed URLs & Wellfound route rules
-│   ├── auth.js                  # Wellfound session check & auto-fill
-│   ├── browser.js               # Playwright persistent context launcher
-│   ├── supervisor.js            # CDP click relay, terminal live countdown & watcher
-│   ├── script-builder.js        # Wellfound script bundler
-│   ├── daily-state.js           # Wellfound daily 50/day cap tracker
-│   ├── csv-logger.js            # Application logger
-│   ├── finder.js                # Wellfound job card parser & keyword filter
-│   ├── apply.js                 # Wellfound application form filler & cover note
-│   ├── loop.js                  # Wellfound navigation & continuous application loop
-│   └── utils.js                 # In-page DOM helpers, countdown timer & AI Q&A
-│
-├── naukri/                      # 📁 Complete self-contained Naukri working code
-│   ├── index.js                 # Naukri runner (standalone: node naukri/index.js)
-│   ├── site.js                  # Search URLs & Naukri route rules
-│   ├── auth.js                  # Naukri session check & auto-fill
-│   ├── browser.js               # Playwright persistent context launcher
-│   ├── supervisor.js            # CDP click relay, terminal live countdown & watcher
-│   ├── script-builder.js        # Naukri script bundler
-│   ├── daily-state.js           # Naukri daily 50/day cap tracker
-│   ├── csv-logger.js            # Application logger
-│   ├── finder.js                # Naukri job tuple parser & experience filter
-│   ├── apply.js                 # Naukri 1-click apply, questionnaire & chatbot filler
-│   ├── loop.js                  # Naukri tab blocker, pagination & continuous loop
-│   └── utils.js                 # In-page DOM helpers, countdown timer & AI Q&A
-│
-├── package.json                 # Project dependencies & npm scripts
-├── package-lock.json
-├── index.js                     # Unified orchestrator (runs both platforms or single)
-├── applications.csv             # Centralized application log
-└── .env                         # Candidate credentials & profile data
+```bash
+npm run dashboard
+```
+*(Or `node dashboard/server.js`)*
+
+Open your browser to: 👉 **[http://localhost:3456](http://localhost:3456)**
+
+### Dashboard Tabs:
+1. **📊 Overview & Controls**: Daily quota progress bars, master launcher (`Start All Live`, `Dry Run All`, `Stop All`), quick metrics, and embedded mini-terminal.
+2. **🖥️ Live Terminal**: Real-time streaming console logs with auto-scroll, copy, clear, and platform filters (`Wellfound`, `Naukri`, `Indeed`, `Pauses`, `Errors`).
+3. **⚙️ Profile & Settings**: Full candidate profile editor (identity, contact, experience, 5 resume highlights, application defaults, speed delays, API keys) saved directly to `.env`.
+4. **❓ Q&A Bank**: Live searchable knowledge bank table with instant answer modal.
+5. **📄 Applications Log**: Real-time table explorer for `applications.csv` with site dropdown and keyword search.
+6. **📁 Dynamic Resumes**: Active keyword profile mappings and file size inspector for `resumes/`.
+
+---
+
+## ❓ Smart Q&A Bank & Pause Alerts
+
+The bot maintains a persistent database at [`qa-bank.json`](qa-bank.json):
+
+```json
+{
+  "answers": {
+    "notice period": "Immediate (0 days)",
+    "current ctc": "0",
+    "expected ctc": "3-5 LPA",
+    "years of experience": "1",
+    "experience with react": "1",
+    "are you willing to relocate": "Yes",
+    "languages known": "English, Hindi"
+  },
+  "unanswered": []
+}
 ```
 
+- **Exact & Fuzzy Match**: Queries like *"How many years of work experience do you have with React?"* automatically match `"experience with react"`.
+- **In-Page & In-Dashboard Alert**: If an unknown question is asked, the bot halts form submission, plays an audio alert, and displays a modal. You type the answer, click **Save & Resume**, and the bot records it permanently so it never stops for that question again.
+
 ---
 
-## 🛠️ Requirements
+## 📁 Dynamic Role-Based Resume Switcher
 
-- **Node.js** 18.0 or higher
-- **Google Chrome** installed
-- A **Wellfound account** with your profile, contact information, and resume uploaded
+Resumes are placed inside the [`resumes/`](resumes/) directory:
+
+```text
+resumes/
+├── config.json          # Keyword matcher rules & default fallback
+├── fullstack.pdf        # Targeted for React / Frontend / Full Stack
+├── backend.pdf          # Targeted for Python / Go / Node / Backend
+└── ai_ml.pdf            # Targeted for GenAI / LLM / RAG / Machine Learning
+```
+
+Configure keywords in [`resumes/config.json`](resumes/config.json). The bot scores the job title and description and attaches the matching resume when file upload dialogs appear.
+
+---
+
+## 🏗️ Architecture
+
+```text
+├── dashboard/                   # ⚡ Local Web Control Center
+│   ├── server.js                # Node HTTP server, SSE logs streamer & API
+│   └── public/                  # Modern Glassmorphic Web App (HTML, CSS, JS)
+│
+├── shared/                      # 🔄 Shared Multi-Platform Utilities
+│   ├── runner/
+│   │   ├── browser.js           # Anti-bot Playwright persistent context
+│   │   ├── config.js            # Profile and .env loader
+│   │   ├── qa-manager.js        # Atomic Q&A Bank reader/writer
+│   │   ├── resume-selector.js   # Dynamic role-to-resume scoring
+│   │   └── csv-logger.js        # CSV application logger
+│   └── inject/
+│       └── utils.js             # In-page DOM helpers, countdowns & Q&A matcher
+│
+├── wellfound/                   # 📁 Wellfound (AngelList) Applier
+│   ├── runner/supervisor.js     # Wellfound watcher & CDP click relay
+│   └── inject/apply.js          # Wellfound form filler & tailored notes
+│
+├── naukri/                      # 📁 Naukri FastApply Applier
+│   ├── runner/supervisor.js     # Naukri watcher & chatbot answerer
+│   └── inject/apply.js          # Naukri questionnaire filler & submitter
+│
+├── indeed/                      # 📁 Indeed SmartApply Applier
+│   ├── runner/supervisor.js     # Indeed Turnstile auto-solver & watcher
+│   └── inject/apply.js          # Indeed multi-step form filler & CDP clicker
+│
+├── resumes/                     # 📄 PDF Resumes & config.json
+├── qa-bank.json                 # ❓ Smart Q&A Knowledge Bank
+├── applications.csv             # 📊 Centralized submitted applications log
+├── index.js                     # 🚀 Multi-platform unified orchestrator
+└── .env                         # 🔒 Candidate credentials & settings
+```
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Clone Repository
+### 1. Installation
 
 ```powershell
 git clone https://github.com/Satyam-xD/Wellfound-Apply.git
@@ -137,83 +181,49 @@ cd Wellfound-Apply
 npm install
 ```
 
-### 2. Environment Configuration
+### 2. Configuration via Dashboard or .env
 
-Copy [.env.example](file:///d:/well/.env.example) to `.env`:
+You can configure all details directly in the Web Dashboard at **[http://localhost:3456](http://localhost:3456)** under **Profile & Settings**, or copy [.env.example](.env.example) to `.env`:
 
 ```powershell
 copy .env.example .env
 ```
 
-Open `.env` and fill in your details:
-
-```env
-# Personal Info
-NAME="Your Name"
-EMAIL="your.email@example.com"
-PHONE="+91-XXXXXXXXXX"
-LOCATION="Your City, India"
-CURRENT_ROLE="Software Engineer"
-COMPANY="Your Current/Past Company"
-EDUCATION="B.Tech in Computer Science"
-YEARS_EXPERIENCE="1 year"
-
-# Technical Profile
-SKILLS="JavaScript, TypeScript, React, Next.js, Node.js, Express, Python, PostgreSQL, Docker"
-HIGHLIGHTS="Built scalable full-stack applications||Engineered high-performance React frontends||Automated backend pipelines and APIs"
-
-# Application Answers & Compensation
-NOTICE_PERIOD="Immediate / 15 days"
-CURRENT_CTC="6"
-EXPECTED_CTC="12-15"
-DOB="2000-01-01"
-GENDER="Male"
-WORK_AUTH="Authorized to work in country of residence"
-
-# Links & Portfolio
-GITHUB_URL="https://github.com/yourusername"
-LINKEDIN_URL="https://linkedin.com/in/yourusername"
-PORTFOLIO_URL="https://yourportfolio.com"
-
-# AI Fallback (Optional)
-OLLAMA_MODEL="llama3"
-GEMINI_KEY="your_gemini_api_key_here"
-```
-
-> 🔒 **Security Notice**: `.env`, browser profile cookies, and generated CSVs are automatically ignored by `.gitignore` to protect your privacy.
-
 ### 3. One-Time Login
 
-Launch Chrome once to log in and save your session cookies:
+Log in once to save your session cookies (never enter passwords during active runs):
 
 ```powershell
-### 3. One-Time Login
+# Log in to all 3 platforms sequentially:
+npm run login
 
-```powershell
-# Log in to all platforms sequentially
-node index.js all login
-# or individually:
-node index.js wellfound login
-node index.js naukri login
-node index.js indeed login
+# Or individually:
+npm run login:wellfound
+npm run login:naukri
+npm run login:indeed
 ```
 
-1. Chrome opens on the login page for each platform.
-2. Sign in to your account.
-3. Once logged in, close the browser window.
-4. Your sessions are saved to `.wellfound-chrome-profile/`, `.naukri-chrome-profile/`, and `.indeed-chrome-profile/` for all future automated runs.
+### 4. Launch Modes
 
-### 4. Single-Click 3-Platform Live Run
+#### Option A: Local Dashboard (Recommended)
+```powershell
+npm run dashboard
+```
+Open **[http://localhost:3456](http://localhost:3456)** and click **"Start All Live"** or **"Test Dry Run"**.
 
-You can launch all 3 platforms (Wellfound + Naukri + Indeed) in parallel split terminals with a single click or command:
+#### Option B: Terminal CLI
+```powershell
+# Run all 3 platforms live in parallel
+npm start
 
-- **Double-click `start-all.bat`** in the root folder, OR
-- Run in terminal:
-  ```powershell
-  npm start
-  # or
-  node index.js all --live
-  ```
+# Run all 3 platforms in test Dry Run mode (no submissions)
+npm run dry
+
+# Run single platforms live:
+npm run indeed
+npm run naukri
+npm run wellfound
+```
 
 ---
 
@@ -221,14 +231,14 @@ You can launch all 3 platforms (Wellfound + Naukri + Indeed) in parallel split t
 
 | Command | NPM Script | Description |
 |---|---|---|
-| `start-all.bat` | — | **One-click**: Launches Wellfound, Naukri & Indeed simultaneously |
+| `node dashboard/server.js` | `npm run dashboard` | **Command Center**: Launches Web Dashboard at `http://localhost:3456` |
 | `node index.js all --live` | `npm start` | **All Platforms Live**: Runs Wellfound, Naukri, and Indeed in parallel |
 | `node index.js all` | `npm run dry` | **All Platforms Dry Run**: Tests all 3 platforms without submitting |
-| `node index.js all login` | `npm run login` | Opens browser sequentially to log in to all platforms |
-| `node index.js indeed --live` | `npm run indeed` | **Indeed Live**: Runs auto-applier on Indeed |
+| `node index.js all login` | `npm run login` | Sequential one-time login for all platforms |
+| `node index.js indeed --live` | `npm run indeed` | **Indeed Live**: Runs auto-applier with Turnstile auto-solver |
 | `node index.js indeed` | `npm run dry:indeed` | **Indeed Dry Run**: Tests Indeed without submitting |
 | `node index.js indeed login` | `npm run login:indeed` | One-time login to Indeed |
-| `node index.js naukri --live` | `npm run naukri` | **Naukri Live**: Runs auto-applier on Naukri |
+| `node index.js naukri --live` | `npm run naukri` | **Naukri Live**: Runs FastApply on Naukri |
 | `node index.js naukri` | `npm run dry:naukri` | **Naukri Dry Run**: Tests Naukri without submitting |
 | `node index.js naukri login` | `npm run login:naukri` | One-time login to Naukri |
 | `node index.js wellfound --live` | `npm run wellfound` | **Wellfound Live**: Runs auto-applier on Wellfound |
@@ -238,66 +248,40 @@ You can launch all 3 platforms (Wellfound + Naukri + Indeed) in parallel split t
 
 ---
 
-## ⚙️ Customization Guide
+## ⏰ Automated Scheduling (Windows Task Scheduler)
 
-### 1. Job Matching & Filtering (`inject/finder.js`)
-- `TITLE_KEYWORDS`: List of positive keyword patterns (e.g. `'full stack'`, `'react'`, `'node.js'`, `'intern'`, `'associate'`).
-- `TITLE_BLOCKLIST`: List of excluded patterns (e.g. `'senior'`, `'staff'`, `'lead'`, `'manager'`, `'devops'`).
-- `titleOk()`: Filters out jobs with `2+ years` experience tags.
-
-### 2. Search Feeds & Limits (`runner/sites.js`)
-- `searches`: Array of Wellfound search URLs to rotate through.
-- `dailyCap`: Max applications permitted per day (default `50`).
-
-### 3. Answer Bank (`inject/answers.js`)
-- `FACTUAL_QA`: Regex rules mapping question labels to candidate answers.
-- `coverLetter()`: Template function generating the personalized cover letter text.
-
----
-
-## ⏰ Automated Scheduling (Task Scheduler)
-
-To run the automation automatically every day on Windows, register a scheduled task via PowerShell:
+To run the automation automatically every day at 11:00 AM on Windows:
 
 ```powershell
-$repo = "D:\well"   # Adjust to your local repository directory
-$action = New-ScheduledTaskAction -Execute "node.exe" -Argument "index.js wellfound --live --offscreen" -WorkingDirectory $repo
+$repo = "D:\well"
+$action = New-ScheduledTaskAction -Execute "node.exe" -Argument "index.js all --live --offscreen" -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Daily -At 11:00AM
-Register-ScheduledTask -TaskName "WellfoundAutoApply" -Action $action -Trigger $trigger -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
+Register-ScheduledTask -TaskName "AutoApplyDaily" -Action $action -Trigger $trigger -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
 ```
 
-### Scheduled Task Management:
+Management commands:
 ```powershell
-Start-ScheduledTask WellfoundAutoApply       # Trigger task immediately
-Disable-ScheduledTask WellfoundAutoApply     # Pause schedule
-Enable-ScheduledTask WellfoundAutoApply      # Resume schedule
-Unregister-ScheduledTask WellfoundAutoApply  # Remove schedule
+Start-ScheduledTask AutoApplyDaily       # Trigger immediately
+Disable-ScheduledTask AutoApplyDaily     # Pause schedule
+Enable-ScheduledTask AutoApplyDaily      # Resume schedule
+Unregister-ScheduledTask AutoApplyDaily  # Delete schedule
 ```
 
 ---
 
 ## ❓ Troubleshooting & FAQ
 
-- **Cloudflare / DataDome verification challenge:**
-  - Run `node index.js wellfound login`, complete the verification challenge manually in the open window, close the window, and restart the runner.
-
-- **Session expired:**
-  - Delete the `.wellfound-chrome-profile/` folder and re-run `node index.js wellfound login`.
-
-- **PowerShell Execution Policy warning on `npm`:**
-  - Run directly via `node index.js wellfound ...` or enable scripts via:
-    ```powershell
-    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-    ```
-
-- **Reset daily application count:**
-  - Delete `apply-state-wellfound.json` or adjust the count integer inside it.
-
-- **Application skipped:**
-  - External redirects (listings directing to Greenhouse, Lever, Workday) or jobs that open full-page without an inline modal are skipped automatically.
+- **Cloudflare Turnstile on Indeed:**
+  - The bot automatically locates Turnstile iframes and dispatches trusted CDP hardware clicks. If a manual puzzle appears, solve it once in the open browser window.
+- **Port 3456 already in use:**
+  - Run `taskkill /F /IM node.exe` or start with a custom port: `PORT=3457 npm run dashboard`.
+- **Bot pauses on an unknown question:**
+  - Check the browser window or the Web Dashboard modal. Type your answer and click **Save & Resume** — it will be permanently remembered in `qa-bank.json`.
+- **Reset daily quota counters:**
+  - Counters automatically reset each day. To manually reset, delete `apply-state-wellfound.json`, `apply-state-naukri.json`, or `apply-state-indeed.json`.
 
 ---
 
 ## ⚠️ Disclaimer
 
-Automating job applications may be subject to Wellfound's Terms of Service. This tool is intended for personal productivity and includes anti-bot protections, humanized delays, and daily limits. Use responsibly and verify with dry run mode before running live.
+Automating job applications may be subject to each platform's Terms of Service. This tool is built for personal productivity and incorporates anti-bot measures, humanized delays, and daily volume caps. Always test with **Dry Run** mode first.

@@ -116,7 +116,7 @@ function cleanTitle(raw) {
 function cleanCompany(raw) {
   if (!raw) return '';
   return raw
-    .replace(/^apply to /i, '')
+    .replace(/^apply\s+(?:to|at|for)\s+/i, '')
     .split(/(?:Actively|Hiring|solves|elevates?|employees|Transforming|clinical|Building|Empowering|Leading|Backed|Seed|Series\s*[A-C]|Stealth)/i)[0]
     .replace(/(?:company )?logo/i, '')
     .replace(/[•·|].*/, '')
@@ -293,8 +293,11 @@ function findQABankAnswer(qaBank, questionText) {
   for (const [key, val] of entries) {
     if (val === undefined || val === null || val === '') continue;
     const kNorm = String(key).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    if (kNorm.length >= 4 && (qNorm.includes(kNorm) || kNorm.includes(qNorm))) {
-      return String(val);
+    if (kNorm.length >= 4) {
+      // Question contains the bank key (e.g. "what is your notice period?" contains "notice period")
+      if (qNorm.includes(kNorm)) return String(val);
+      // Bank key contains the question ONLY if the question is a multi-word specific phrase
+      if (qNorm.length >= 8 && qNorm.includes(' ') && kNorm.includes(qNorm)) return String(val);
     }
   }
 

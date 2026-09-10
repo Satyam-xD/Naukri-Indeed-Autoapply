@@ -114,8 +114,8 @@ function recordQA({ question, answer = '', status = 'known', source = 'profile' 
       delete bank.unanswered[normQ];
       changed = true;
     }
-    // Only set if not already present or source is explicit
-    if (!hasInAnswers || source === 'gemini') {
+    // Only set if not already present, or if explicitly provided by the user
+    if (!hasInAnswers || source === 'user') {
       bank.answers[normQ] = String(answer).trim();
       changed = true;
     }

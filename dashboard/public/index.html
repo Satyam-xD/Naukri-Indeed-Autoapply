@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Apply Command Center | Wellfound • Naukri • Indeed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <h1 class="brand-title">Auto-Apply <span>Command Center</span></h1>
+          <p class="brand-subtitle">Automated Job Application & Intelligent QA Control</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="live-pill" id="live-indicator">
+          <span class="pulse-dot"></span> System Live
+        </div>
+        <button class="btn btn-primary" id="btn-refresh-all">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+          Sync Data
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="overview">
+        <span class="tab-icon">📊</span> Overview & Controls
+      </button>
+      <button class="tab-btn" data-tab="terminal">
+        <span class="tab-icon">🖥️</span> Live Terminal
+        <span class="badge badge-cyan" id="terminal-live-badge">Live</span>
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <span class="tab-icon">⚙️</span> Profile & Settings
+      </button>
+      <button class="tab-btn" data-tab="qabank">
+        <span class="tab-icon">❓</span> Q&A Bank
+        <span class="badge badge-amber" id="unanswered-count-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="applications">
+        <span class="tab-icon">📄</span> Applications Log
+        <span class="badge badge-cyan" id="total-apps-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="resumes">
+        <span class="tab-icon">📁</span> Dynamic Resumes
+      </button>
+    </nav>
+
+    <!-- MAIN CONTENT PANELS -->
+    <main class="content-area">
+      <!-- 1. OVERVIEW TAB -->
+      <section class="tab-panel active" id="panel-overview">
+        <!-- Quota Progress Grid -->
+        <div class="grid grid-3">
+          <div class="card platform-card" id="card-wellfound">
+            <div class="platform-header">
+              <div class="platform-meta">
+                <span class="platform-badge wf-badge">Wellfound</span>
+                <h3>AngelList Talent</h3>
+              </div>
+              <span class="status-tag" id="status-tag-wf">Idle</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-labels">
+                <span>Today's Applications</span>
+                <span class="progress-fraction" id="wf-fraction">0 / 50</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill wf-fill" id="wf-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="platform-actions">
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', false)">Test Dry Run</button>
+              <button class="btn btn-sm btn-accent" onclick="startRunner('wellfound', true)">Launch Live</button>
+            </div>
+          </div>
+
+          <div class="card platform-card" id="card-naukri">
+            <div class="platform-header">
+              <div class="platform-meta">
+                <span class="platform-badge nk-badge">Naukri</span>
+                <h3>Naukri FastApply</h3>
+              </div>
+              <span class="status-tag" id="status-tag-nk">Idle</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-labels">
+                <span>Today's Applications</span>
+                <span class="progress-fraction" id="nk-fraction">0 / 50</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill nk-fill" id="nk-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="platform-actions">
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('naukri', false)">Test Dry Run</button>
+              <button class="btn btn-sm btn-accent" onclick="startRunner('naukri', true)">Launch Live</button>
+            </div>
+          </div>
+
+          <div class="card platform-card" id="card-indeed">
+            <div class="platform-header">
+              <div class="platform-meta">
+                <span class="platform-badge ind-badge">Indeed</span>
+                <h3>Indeed SmartApply</h3>
+              </div>
+              <span class="status-tag" id="status-tag-ind">Idle</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-labels">
+                <span>Today's Applications</span>
+                <span class="progress-fraction" id="ind-fraction">0 / 60</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill ind-fill" id="ind-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="platform-actions">
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('indeed', false)">Test Dry Run</button>
+              <button class="btn btn-sm btn-accent" onclick="startRunner('indeed', true)">Launch Live</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Controls & Quick Activity -->
+        <div class="grid grid-2" style="margin-top: 24px;">
+          <div class="card">
+            <div class="card-header">
+              <h3>🚀 Multi-Platform Launcher</h3>
+              <p>Launch all three platforms simultaneously in parallel</p>
+            </div>
+            <div class="master-controls-body">
+              <p class="text-muted">Runs Wellfound, Naukri, and Indeed together with autonomous human pacing, Cloudflare Turnstile auto-solving, and QA memory.</p>
+              <div class="control-btn-group">
+                <button class="btn btn-outline" onclick="startRunner('all', false)">🧪 Dry Run (All 3)</button>
+                <button class="btn btn-success" onclick="startRunner('all', true)">🟢 Start All Live</button>
+                <button class="btn btn-danger" onclick="stopAllRunners()">🛑 Stop All</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>⚡ Quick Stats</h3>
+              <p>Overall application volume & status</p>
+            </div>
+            <div class="quick-stats-grid">
+              <div class="stat-box">
+                <div class="stat-num" id="stat-total-apps">0</div>
+                <div class="stat-label">Total Jobs Applied</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-num" id="stat-qa-known">0</div>
+                <div class="stat-label">Saved QA Answers</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-num" id="stat-qa-pending" style="color: var(--amber);">0</div>
+                <div class="stat-label">Pending Questions</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-num" id="stat-resumes-count">3</div>
+                <div class="stat-label">Active Resumes</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Embedded Mini Console -->
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header-flex">
+            <div>
+              <h3>🖥️ Live Execution Feed</h3>
+              <p>Real-time stream from active background runners</p>
+            </div>
+            <div class="header-tools">
+              <button class="btn btn-sm btn-accent" onclick="switchToTab('terminal')">Open Full Terminal ↗</button>
+            </div>
+          </div>
+          <div class="mini-terminal-box" id="mini-terminal-box">
+            <!-- Latest 8 log lines streamed -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. LIVE TERMINAL TAB -->
+      <section class="tab-panel" id="panel-terminal">
+        <div class="card terminal-card">
+          <!-- Terminal Controls Bar -->
+          <div class="terminal-bar">
+            <div class="terminal-bar-left">
+              <div class="window-dots">
+                <span class="dot dot-red"></span>
+                <span class="dot dot-yellow"></span>
+                <span class="dot dot-green"></span>
+              </div>
+              <span class="terminal-title">Runner Console (<span id="active-runners-summary">Idle</span>)</span>
+            </div>
+
+            <div class="terminal-bar-right">
+              <!-- Platform Log Filters -->
+              <div class="filter-pill-group">
+                <button class="pill-btn active" data-logfilter="all">All Logs</button>
+                <button class="pill-btn" data-logfilter="wellfound">Wellfound</button>
+                <button class="pill-btn" data-logfilter="naukri">Naukri</button>
+                <button class="pill-btn" data-logfilter="indeed">Indeed</button>
+                <button class="pill-btn" data-logfilter="pause">Pauses</button>
+                <button class="pill-btn" data-logfilter="error">Errors</button>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="terminal-actions-group">
+                <button class="btn btn-sm btn-ghost" id="btn-toggle-autoscroll" onclick="toggleAutoScroll()">
+                  <span id="autoscroll-icon">⬇</span> Auto-Scroll: <span id="autoscroll-state">ON</span>
+                </button>
+                <button class="btn btn-sm btn-ghost" onclick="clearTerminalLogs()">Clear</button>
+                <button class="btn btn-sm btn-ghost" onclick="copyTerminalLogs()">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terminal Output Window -->
+          <div class="terminal-body" id="terminal-body">
+            <div class="terminal-line system">
+              <span class="term-time">[00:00:00]</span>
+              <span class="term-badge term-badge-sys">[system]</span>
+              <span class="term-text">Connecting to runner streaming engine...</span>
+            </div>
+          </div>
+
+          <!-- Bottom Terminal Launcher Toolbar -->
+          <div class="terminal-footer-toolbar">
+            <div class="quick-launch-label">⚡ Quick Run:</div>
+            <div class="quick-launch-buttons">
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', false)">WF Dry</button>
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', true)">WF Live</button>
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('naukri', false)">Naukri Dry</button>
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('naukri', true)">Naukri Live</button>
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('indeed', false)">Indeed Dry</button>
+              <button class="btn btn-sm btn-ghost" onclick="startRunner('indeed', true)">Indeed Live</button>
+              <button class="btn btn-sm btn-danger" onclick="stopAllRunners()">Stop Active</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. PROFILE & SETTINGS TAB -->
+      <section class="tab-panel" id="panel-settings">
+        <form id="settings-form" onsubmit="saveAllSettings(event)">
+          <div class="settings-header-banner">
+            <div>
+              <h2>Candidate Profile & Automation Settings</h2>
+              <p>Everything configured here directly updates your <code>.env</code> file and takes effect across all platform bots.</p>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-save-settings">
+              💾 Save All Changes
+            </button>
+          </div>
+
+          <div class="grid grid-2" style="margin-top: 20px;">
+            <!-- 1. Identity & Contact -->
+            <div class="card">
+              <div class="card-header">
+                <h3>👤 Candidate Identity & Contact</h3>
+                <p>Personal details pre-filled in application forms</p>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Full Name</label>
+                  <input type="text" id="set-name" placeholder="Satyam Katiyar" required>
+                </div>
+                <div class="form-group">
+                  <label>Primary Email</label>
+                  <input type="email" id="set-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input type="text" id="set-phone" placeholder="+91 9876543210" required>
+                </div>
+                <div class="form-group">
+                  <label>Location / City</label>
+                  <input type="text" id="set-location" placeholder="City, State, Country" required>
+                </div>
+                <div class="form-group">
+                  <label>Date of Birth</label>
+                  <input type="text" id="set-dob" placeholder="DD/MM/YYYY">
+                </div>
+                <div class="form-group">
+                  <label>Gender</label>
+                  <select id="set-gender" class="select-input" style="width: 100%;">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                    <option value="Decline to state">Decline to state</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Professional Background -->
+            <div class="card">
+              <div class="card-header">
+                <h3>💼 Professional Experience & Skills</h3>
+                <p>Work experience, current company, and tech skills</p>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Current / Most Recent Role</label>
+                  <input type="text" id="set-currentRole" placeholder="Full Stack Developer Intern">
+                </div>
+                <div class="form-group">
+                  <label>Current Company</label>
+                  <input type="text" id="set-company" placeholder="Techvision Technologies">
+                </div>
+                <div class="form-group full-width">
+                  <label>Education / Degree & College</label>
+                  <input type="text" id="set-education" placeholder="B.Tech in Computer Science, College Name">
+                </div>
+                <div class="form-group">
+                  <label>Years of Experience</label>
+                  <input type="text" id="set-yearsExperience" placeholder="1">
+                </div>
+                <div class="form-group full-width">
+                  <label>Key Skills (Comma-separated)</label>
+                  <textarea id="set-skills" rows="3" class="textarea-input" placeholder="Python, JavaScript, React, Node.js, Express, MongoDB..."></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Resume Highlights -->
+            <div class="card full-width-card">
+              <div class="card-header">
+                <h3>⭐ Resume Highlights (Bullet Points for Cover Letters & Form Answers)</h3>
+                <p>Up to 5 major projects or achievements used when applications require a summary</p>
+              </div>
+              <div class="highlights-grid">
+                <div class="form-group">
+                  <label>Highlight 1</label>
+                  <input type="text" id="set-hl-0" placeholder="Highlight bullet 1...">
+                </div>
+                <div class="form-group">
+                  <label>Highlight 2</label>
+                  <input type="text" id="set-hl-1" placeholder="Highlight bullet 2...">
+                </div>
+                <div class="form-group">
+                  <label>Highlight 3</label>
+                  <input type="text" id="set-hl-2" placeholder="Highlight bullet 3...">
+                </div>
+                <div class="form-group">
+                  <label>Highlight 4</label>
+                  <input type="text" id="set-hl-3" placeholder="Highlight bullet 4...">
+                </div>
+                <div class="form-group">
+                  <label>Highlight 5</label>
+                  <input type="text" id="set-hl-4" placeholder="Highlight bullet 5...">
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Application Questionnaire Defaults -->
+            <div class="card">
+              <div class="card-header">
+                <h3>📝 Application Questionnaire Defaults</h3>
+                <p>Standard values auto-selected for CTC and notice period</p>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Notice Period</label>
+                  <input type="text" id="set-noticePeriod" placeholder="Immediate (0 days)">
+                </div>
+                <div class="form-group">
+                  <label>Current CTC (in LPA or 0)</label>
+                  <input type="text" id="set-currentCTC" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label>Expected CTC (in LPA)</label>
+                  <input type="text" id="set-expectedCTC" placeholder="3-5">
+                </div>
+                <div class="form-group full-width">
+                  <label>Work Authorization</label>
+                  <input type="text" id="set-workAuth" placeholder="Authorized to work in my country of residence.">
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Web Links & Portfolios -->
+            <div class="card">
+              <div class="card-header">
+                <h3>🔗 Web Profiles & Links</h3>
+                <p>URLs attached to employer cover notes and links fields</p>
+              </div>
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label>GitHub Profile URL</label>
+                  <input type="url" id="set-github" placeholder="https://github.com/your-username">
+                </div>
+                <div class="form-group full-width">
+                  <label>LinkedIn Profile URL</label>
+                  <input type="url" id="set-linkedin" placeholder="https://www.linkedin.com/in/your-profile/">
+                </div>
+                <div class="form-group full-width">
+                  <label>Portfolio / Personal Website</label>
+                  <input type="url" id="set-portfolio" placeholder="https://yourportfolio.com">
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Automation & Platform Settings -->
+            <div class="card full-width-card">
+              <div class="card-header">
+                <h3>⚙️ Automation Speed & API Keys</h3>
+                <p>Human pacing delays, optional AI fallback, and portal URLs</p>
+              </div>
+              <div class="form-grid grid-4-cols">
+                <div class="form-group">
+                  <label>Min Delay (seconds)</label>
+                  <input type="number" id="set-minDelay" min="1" max="60" placeholder="5">
+                </div>
+                <div class="form-group">
+                  <label>Max Delay (seconds)</label>
+                  <input type="number" id="set-maxDelay" min="1" max="120" placeholder="10">
+                </div>
+                <div class="form-group">
+                  <label>Naukri Profile URL</label>
+                  <input type="url" id="set-naukriUrl" placeholder="https://www.naukri.com/mnjuser/profile">
+                </div>
+                <div class="form-group">
+                  <label>Gemini API Key (Optional AI Fallback)</label>
+                  <input type="password" id="set-geminiKey" placeholder="AI key for unmatched questions">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-save-footer">
+            <button type="submit" class="btn btn-primary btn-lg">
+              💾 Save All Profile & Settings
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 4. QA BANK TAB -->
+      <section class="tab-panel" id="panel-qabank">
+        <div class="card">
+          <div class="card-header-flex">
+            <div>
+              <h3>Smart Q&A Knowledge Bank</h3>
+              <p>Questions answered here are remembered forever. The bot checks these before guessing or asking AI.</p>
+            </div>
+            <div class="header-tools">
+              <input type="text" id="qa-search-input" class="search-input" placeholder="Search questions or answers...">
+              <div class="filter-pill-group">
+                <button class="pill-btn active" data-qafilter="all">All (<span id="qa-count-all">0</span>)</button>
+                <button class="pill-btn" data-qafilter="unanswered">Needs Answer (<span id="qa-count-unanswered">0</span>)</button>
+                <button class="pill-btn" data-qafilter="answers">Saved (<span id="qa-count-answers">0</span>)</button>
+              </div>
+              <button class="btn btn-sm btn-primary" onclick="openAddQuestionModal()">+ Add Answer</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="qa-table">
+              <thead>
+                <tr>
+                  <th style="width: 40%">Question</th>
+                  <th style="width: 40%">Answer</th>
+                  <th style="width: 10%">Status</th>
+                  <th style="width: 10%; text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="qa-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. APPLICATIONS LOG TAB -->
+      <section class="tab-panel" id="panel-applications">
+        <div class="card">
+          <div class="card-header-flex">
+            <div>
+              <h3>Submitted Applications Log</h3>
+              <p>Real-time records from applications.csv</p>
+            </div>
+            <div class="header-tools">
+              <input type="text" id="apps-search-input" class="search-input" placeholder="Search role, company, skills...">
+              <select id="apps-site-filter" class="select-input">
+                <option value="all">All Sites</option>
+                <option value="indeed">Indeed</option>
+                <option value="naukri">Naukri</option>
+                <option value="wellfound">Wellfound</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="apps-table">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Site</th>
+                  <th>Role</th>
+                  <th>Company</th>
+                  <th>Salary</th>
+                  <th>Exp Required</th>
+                  <th>Skills</th>
+                  <th style="text-align: right;">Job Link</th>
+                </tr>
+              </thead>
+              <tbody id="apps-table-body">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. DYNAMIC RESUMES TAB -->
+      <section class="tab-panel" id="panel-resumes">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3>Role-to-Resume Keyword Mapping</h3>
+              <p>The bot inspects the job title & description and automatically attaches the best PDF resume</p>
+            </div>
+            <div id="resumes-profile-list" class="profile-list">
+              <!-- Dynamically injected -->
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Available PDF Files in resumes/</h3>
+              <p>Place your customized PDF resumes in the <code>resumes/</code> folder</p>
+            </div>
+            <div class="resume-files-box">
+              <ul id="resume-files-list" class="file-tag-list">
+                <!-- Dynamically injected -->
+              </ul>
+              <div class="hint-box">
+                <span class="hint-icon">💡</span>
+                <div>
+                  <b>How to update resumes:</b>
+                  <p>Drop your real PDF files (e.g. <code>fullstack.pdf</code>, <code>backend.pdf</code>, <code>ai_ml.pdf</code>) directly into <code>d:\well\resumes\</code>. They will be auto-detected and attached during applications!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Dialog: Add/Edit QA -->
+  <div class="modal-backdrop" id="qa-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="qa-modal-title">Add Q&A Answer</h3>
+        <button class="modal-close-btn" onclick="closeQaModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Question / Keywords:</label>
+          <input type="text" id="modal-question-input" placeholder="e.g. How many years of experience with React?">
+        </div>
+        <div class="form-group">
+          <label>Your Answer:</label>
+          <input type="text" id="modal-answer-input" placeholder="e.g. 1 year / Yes / Immediate">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeQaModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveModalQa()">Save to QA Bank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: In-Dashboard Live Pause Alert -->
+  <div class="modal-backdrop" id="pause-modal">
+    <div class="modal-card pause-modal-card">
+      <div class="modal-header pause-header">
+        <div class="pause-header-left">
+          <span class="pause-icon">🚨</span>
+          <h3>Bot Paused: Unknown Question Encountered</h3>
+        </div>
+        <button class="modal-close-btn" onclick="closePauseModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="pause-desc">An employer application form just asked an unknown question. Provide your answer below — it will be filled into the form and permanently saved to your Q&A Bank!</p>
+        <div class="pause-q-box" id="pause-question-display">
+          <!-- Question text -->
+        </div>
+        <div class="form-group" style="margin-top: 14px;">
+          <label>Your Answer:</label>
+          <input type="text" id="pause-answer-input" placeholder="Enter answer to resume bot...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closePauseModal()">Dismiss</button>
+        <button class="btn btn-primary" onclick="submitPauseAnswer()">Save & Resume Bot</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

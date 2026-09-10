@@ -370,9 +370,9 @@ async function fillNaukriQuestionnaire(container) {
 
   // ── 5. Submit / Next / Continue button ────────────────────
   await sleep(300);
-  const actionBtn = [...container.querySelectorAll('button, [role="button"]')]
+  const actionBtn = [...container.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"], a.btn')]
     .filter(visible)
-    .find((b) => !b.disabled && /save|submit|apply|send|continue|next|proceed/i.test(b.textContent.trim()));
+    .find((b) => !b.disabled && /save|submit|apply|send|continue|next|proceed/i.test((b.textContent || b.value || '').trim()));
 
   if (actionBtn) {
     actionBtn.scrollIntoView({ block: 'center' });

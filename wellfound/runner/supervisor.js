@@ -6,8 +6,9 @@
  */
 'use strict';
 
-const path      = require('path');
-const qaManager = require('../../shared/runner/qa-manager');
+const path            = require('path');
+const qaManager       = require('../../shared/runner/qa-manager');
+const { getBestResume } = require('../../shared/runner/resume-selector');
 
 /** How long the supervisor runs before giving up. */
 const MAX_RUNTIME_MS = 100 * 60 * 1000;  // 100 minutes
@@ -36,7 +37,7 @@ async function scrapeJobDetails(page, job) {
       /\b(fresher|entry.?level|[0-9]+\s*[-–]?\s*[0-9]*\s*\+?\s*(?:years?|yrs?)(?:\s*(?:of\s*)?exp(?:erience)?)?)/i
     );
     return {
-      company: (bodyText.match(/Apply to (.{2,60})/) || [])[1]?.trim()
+      company: (bodyText.match(/Apply\s+(?:to|at|for)\s+(.{2,60})/i) || [])[1]?.trim()
              || q('a[href^="/company/"]'),
       salary: (bodyText.match(
         /(?:₹|\$)\s?[\d,.]+(?:\s?[-–]\s?(?:₹|\$)?[\d,.]+)?[^\n]{0,30}/
@@ -65,9 +66,31 @@ async function scrapeJobDetails(page, job) {
  * @param {Function} log
  * @returns {{ stop: Function }}
  */
-function startClickRelay(mainPage, log) {
+function startClickRelay(mainPage, log, getJob) {
+  let tick = 0;
   const id = setInterval(async () => {
     try {
+      tick++;
+      if (tick % 5 === 0) {
+        try {
+          const hasFileInput = await mainPage.evaluate(() => {
+            const fi = document.querySelector('input[type="file"]');
+            return fi && !fi.disabled && (!fi.files || fi.files.length === 0);
+          }).catch(() => false);
+
+          if (hasFileInput) {
+            const job = typeof getJob === 'function' ? getJob() : null;
+            const resume = getBestResume(job || {});
+            const fiLoc = mainPage.locator('input[type="file"]').first();
+            if (await fiLoc.count() > 0) {
+              await fiLoc.setInputFiles(resume.path);
+              log(`  📄 Attached resume: "${resume.filename}" (${resume.label})`);
+              await mainPage.waitForTimeout(1000);
+            }
+          }
+        } catch (_) {}
+      }
+
       const signal = await mainPage.evaluate(() => {
         const s = window.__aaReadyToSubmit;
         if (!s || typeof s !== 'object' || !s.x) return null;
@@ -299,7 +322,7 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
   // ── Trusted-click relay (live mode only) ──────────────────────────
   // The injected script can't fire trusted (isTrusted=true) mouse events.
   // startClickRelay polls for window.__aaReadyToSubmit and fires a real CDP click.
-  const clickRelay = live ? startClickRelay(mainPage, log) : null;
+  const clickRelay = live ? startClickRelay(mainPage, log, () => state.pendingJob) : null;
 
   // ── Supervisor polling loop ───────────────────────────────────────
   while (state.submitted < target && Date.now() < deadline) {

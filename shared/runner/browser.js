@@ -33,21 +33,22 @@ async function launchBrowser(profileDir, offscreen = false) {
     '--disable-infobars',
     '--disable-dev-shm-usage',
     '--disable-popup-blocking',
-    '--disable-extensions-except=',
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-background-timer-throttling',
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',
+    '--enable-features=NetworkService,NetworkServiceInProcess',
     ...(offscreen ? ['--window-position=-32000,-32000'] : []),
   ];
 
   const baseOpts = {
-    headless:   false,
-    viewport:   { width: 1280, height: 900 },
-    locale:     'en-IN',
-    timezoneId: 'Asia/Kolkata',
-    args:       baseArgs,
+    headless:          false,
+    viewport:          { width: 1280, height: 900 },
+    locale:            'en-IN',
+    timezoneId:        'Asia/Kolkata',
+    ignoreDefaultArgs: ['--enable-automation'],
+    args:              baseArgs,
   };
 
   for (const channel of ['chrome', 'msedge', null]) {

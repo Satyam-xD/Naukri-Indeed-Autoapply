@@ -79,13 +79,15 @@ function findApplyPanel() {
     '[class*="sidePanel" i]',
   ].join(', ');
 
+  const PANEL_MATCH_RE = /apply\s+(?:to|at|for)\b|application\s+(?:to|for)\b/i;
+
   const candidates = [...document.querySelectorAll(PANEL_SEL)]
-    .filter((el) => visible(el) && /apply to /i.test(el.textContent) && hasFormFields(el));
+    .filter((el) => visible(el) && PANEL_MATCH_RE.test(el.textContent) && hasFormFields(el));
 
   const fallback = [...document.querySelectorAll('div, section, form, aside')]
     .filter((el) => {
       if (!visible(el) || el === document.body || el === document.documentElement) return false;
-      if (!/apply to /i.test(el.textContent)) return false;
+      if (!PANEL_MATCH_RE.test(el.textContent)) return false;
       if (!hasFormFields(el)) return false;
       return el.querySelectorAll('*').length <= 300;
     });
@@ -107,7 +109,7 @@ function findCardApplyButton(scope) {
     .find((b) => {
       const text = (b.textContent || b.value || '').trim();
       if (/^(applied|save|saved|share|bookmark)$/i.test(text)) return false;
-      return /^apply(\s+now)?$/i.test(text) || /^apply to /i.test(text);
+      return /^apply(\s+now)?$/i.test(text) || /^apply\s+(?:to|at|for)\b/i.test(text);
     }) || null;
 }
 

@@ -157,6 +157,7 @@ if (!isChild && !NO_WATCH && !LOGIN_MODE) {
         '.*-chrome-profile/**',
         'apply-state-*.json',
         'applications*.csv',
+        'qa-bank.json*',
         '*.png',
         'node_modules/**',
       ],
