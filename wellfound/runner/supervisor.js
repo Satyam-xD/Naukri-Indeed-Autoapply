@@ -6,7 +6,8 @@
  */
 'use strict';
 
-const path = require('path');
+const path      = require('path');
+const qaManager = require('../../shared/runner/qa-manager');
 
 /** How long the supervisor runs before giving up. */
 const MAX_RUNTIME_MS = 100 * 60 * 1000;  // 100 minutes
@@ -137,6 +138,33 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
     const text = msg.text();
     if (!/\[auto-apply\]/.test(text)) return;
     state.lastActivity = Date.now();
+
+    if (text.includes('[auto-apply-pause]')) {
+      try {
+        const jsonStr = text.slice(text.indexOf('[auto-apply-pause]') + '[auto-apply-pause]'.length).trim();
+        const data = JSON.parse(jsonStr);
+        process.stdout.write('\x07'); // Terminal beep
+        log(`\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        log(`  🚨 [PAUSED] Unknown question: "${data.question.slice(0, 60)}"`);
+        log(`  👉 Pop-up opened in Chrome! Type answer & click Save to resume.`);
+        log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      } catch (_) {}
+      return;
+    }
+
+    if (text.includes('[auto-apply-qa]')) {
+      try {
+        const jsonStr = text.slice(text.indexOf('[auto-apply-qa]') + '[auto-apply-qa]'.length).trim();
+        const qaData = JSON.parse(jsonStr);
+        qaManager.recordQA(qaData);
+        if (qaData.status === 'unanswered') {
+          log(`  ❓ [QA Bank] Unanswered question saved: "${qaData.question.slice(0, 55)}" (open qa-bank.json to answer)`);
+        } else {
+          log(`  💾 [QA Bank] Recorded answer for: "${qaData.question.slice(0, 55)}"`);
+        }
+      } catch (_) {}
+      return;
+    }
 
     const clean = text.replace(/.*\[auto-apply\]\s*/, '').trim();
 

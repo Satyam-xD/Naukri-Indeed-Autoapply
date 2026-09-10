@@ -35,5 +35,9 @@ module.exports = {
     'https://in.indeed.com/jobs?q=software+engineer&l=Pune%2C+Maharashtra&sc=0kf%3Aattr(DS3S6)%3B&sort=date',
   ],
   /** Return true for pages where the inject script should run. */
-  injectOn: (url) => /indeed\.com\/(jobs|viewjob|cmp)/i.test(url) && !/secure\.indeed\.com\/auth/i.test(url),
+  injectOn: (url) =>
+    // Search results, job detail, and company pages
+    (/indeed\.com\/(jobs|viewjob|cmp)/i.test(url) && !/secure\.indeed\.com\/auth/i.test(url)) ||
+    // Full-page Indeed Apply redirect
+    /smartapply|apply\.indeed|indeed\.com\/beta\/indeedapply|m5\.apply/i.test(url),
 };

@@ -1,0 +1,27 @@
+{
+  "_comment": "QA Bank: Add or update answers here. The bot checks this before applying. Any new or unknown questions encountered during applications are automatically logged into 'unanswered' so you can fill them in for future runs.",
+  "answers": {
+    "notice period": "Immediate (0 days)",
+    "current ctc": "0",
+    "expected ctc": "3-5 LPA",
+    "years of experience": "1",
+    "total work experience": "1",
+    "experience with react": "1",
+    "experience with node": "1",
+    "experience with python": "1",
+    "experience with javascript": "1",
+    "are you willing to relocate": "Yes",
+    "are you authorized to work in india": "Yes",
+    "do you require visa sponsorship": "No",
+    "comfortable working in hybrid or remote": "Yes",
+    "laptop or reliable system available": "Yes",
+    "highest qualification": "Bachelor's Degree",
+    "degree": "B.Tech in Computer Science and Engineering",
+    "college or university": "SRMS CET, Bareilly",
+    "gender": "Male",
+    "date of birth": "23/03/2004",
+    "current location": "Lakhimpur Kheri, UP, India",
+    "languages known": "English, Hindi"
+  },
+  "unanswered": {}
+}

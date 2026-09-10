@@ -35,6 +35,7 @@
       ".*-chrome-profile/**",
       "apply-state-*.json",
       "applications*.csv",
+      "qa-bank.json*",
       "*.png",
       "node_modules/**"
     ]

@@ -254,14 +254,30 @@ async function fillNaukriQuestionnaire(container) {
     if (!opts.length) continue;
     const grpText = grp.textContent?.trim() || '';
     let pick = null;
-    if (/notice\s*period|join/i.test(grpText)) {
-      pick = opts.find((o) => /immediate|0[-–]15/i.test(o.textContent)) || opts[0];
-    } else if (/relocat|move|onsite/i.test(grpText)) {
-      pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
-    } else if (/experience/i.test(grpText)) {
-      pick = opts.find((o) => /^0|fresher|0[-–]1|less than/i.test(o.textContent)) || opts[0];
-    } else {
-      pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
+
+    // Check QA bank for custom group
+    const bankGrpAns = typeof findQABankAnswer === 'function' ? findQABankAnswer(CONFIG.QA_BANK, grpText) : null;
+    if (bankGrpAns) {
+      const norm = String(bankGrpAns).toLowerCase().trim();
+      pick = opts.find((o) => o.textContent?.toLowerCase().includes(norm) || norm.includes(o.textContent?.toLowerCase().trim()));
+      if (pick) {
+        log(`  💾 [QA Bank] Radio choice matched "${grpText.slice(0, 40)}" → "${bankGrpAns}"`);
+      }
+    }
+
+    if (!pick) {
+      if (/notice\s*period|join/i.test(grpText)) {
+        pick = opts.find((o) => /immediate|0[-–]15/i.test(o.textContent)) || opts[0];
+      } else if (/relocat|move|onsite/i.test(grpText)) {
+        pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
+      } else if (/experience/i.test(grpText)) {
+        pick = opts.find((o) => /^0|fresher|0[-–]1|less than/i.test(o.textContent)) || opts[0];
+      } else {
+        pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
+        if (typeof emitQARecord === 'function' && grpText.length > 3) {
+          emitQARecord({ question: grpText, answer: '', status: 'unanswered', source: 'unknown' });
+        }
+      }
     }
     const alreadySelected =
       pick?.getAttribute('aria-checked') === 'true' ||
@@ -277,8 +293,11 @@ async function fillNaukriQuestionnaire(container) {
     const label = labelTextOf(inp).toLowerCase();
     let val = null;
 
-    // Always override these key fields with CV data (don't trust prefilled values)
-    if (/current\s*ctc|current\s*salary/i.test(label))        val = CV.currentCTC  || '0';
+    // Check QA bank first for any custom text inputs
+    const bankVal = typeof findQABankAnswer === 'function' ? findQABankAnswer(CONFIG.QA_BANK, label) : null;
+    if (bankVal !== null && bankVal !== undefined) {
+      val = bankVal;
+    } else if (/current\s*ctc|current\s*salary/i.test(label))        val = CV.currentCTC  || '0';
     else if (/expected\s*ctc|expected\s*salary/i.test(label)) val = CV.expectedCTC || '4';
     else if (/\byears?\b.*exp|\bexp\b.*\byears?\b|\btotal\s*exp/i.test(label)) val = '0';
     else if (/notice\s*period/i.test(label))                  val = 'Immediate';
@@ -303,15 +322,24 @@ async function fillNaukriQuestionnaire(container) {
 
     let opt = null;
 
+    // Check QA bank for select dropdown
+    const bankSelectAns = typeof findQABankAnswer === 'function' ? findQABankAnswer(CONFIG.QA_BANK, label) : null;
+    if (bankSelectAns) {
+      const norm = String(bankSelectAns).toLowerCase().trim();
+      opt = options.find((o) => o.text.toLowerCase().includes(norm) || norm.includes(o.text.toLowerCase().trim()));
+    }
+
     // Rule-based for common fields
-    if (/notice/i.test(label)) {
-      opt = options.find((o) => /immediate|0\s*days?|15\s*days?/i.test(o.text));
-    } else if (/experience|exp/i.test(label)) {
-      opt = options.find((o) => /^0|^less\s*than\s*1|fresher|0[-–]1/i.test(o.text));
-    } else if (/ctc|salary/i.test(label)) {
-      opt = options.find((o) => /not\s*disclosed|0|negotiable/i.test(o.text)) || options[0];
-    } else if (/gender/i.test(label)) {
-      opt = options.find((o) => /^male$/i.test(o.text));
+    if (!opt) {
+      if (/notice/i.test(label)) {
+        opt = options.find((o) => /immediate|0\s*days?|15\s*days?/i.test(o.text));
+      } else if (/experience|exp/i.test(label)) {
+        opt = options.find((o) => /^0|^less\s*than\s*1|fresher|0[-–]1/i.test(o.text));
+      } else if (/ctc|salary/i.test(label)) {
+        opt = options.find((o) => /not\s*disclosed|0|negotiable/i.test(o.text)) || options[0];
+      } else if (/gender/i.test(label)) {
+        opt = options.find((o) => /^male$/i.test(o.text));
+      }
     }
 
     // Gemini fallback for unknown selects (Item 2)

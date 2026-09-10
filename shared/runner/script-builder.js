@@ -4,8 +4,9 @@
  */
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
+const fs        = require('fs');
+const path      = require('path');
+const qaManager = require('./qa-manager');
 
 /**
  * buildScript — bundles the shared utilities and site-specific inject scripts into one IIFE.
@@ -38,6 +39,8 @@ function buildScript({ site, CV, geminiKey, dryRun, maxApplications, minDelayMs,
     return `\n// ===== ${site}/inject/${name} =====\n` + fs.readFileSync(p, 'utf8');
   });
 
+  const qaBank = qaManager.getQABank();
+
   const CONFIG = {
     SITE:             site,
     DRY_RUN:          dryRun,
@@ -45,6 +48,7 @@ function buildScript({ site, CV, geminiKey, dryRun, maxApplications, minDelayMs,
     MIN_DELAY_MS:     typeof minDelayMs === 'number' ? minDelayMs : 5_000,
     MAX_DELAY_MS:     typeof maxDelayMs === 'number' ? maxDelayMs : 10_000,
     geminiKey:        geminiKey || '',
+    QA_BANK:          qaBank,
   };
 
   return `
@@ -56,9 +60,10 @@ function buildScript({ site, CV, geminiKey, dryRun, maxApplications, minDelayMs,
   }
   window.__aaBusy = true;
 
-  // --- Injected by runner (from .env / config.js) ---
-  const CONFIG = ${JSON.stringify(CONFIG, null, 2)};
-  const CV     = ${JSON.stringify(CV,     null, 2)};
+  // --- Injected by runner (from .env / config.js / qa-bank.json) ---
+  const CONFIG  = ${JSON.stringify(CONFIG,  null, 2)};
+  const CV      = ${JSON.stringify(CV,      null, 2)};
+  const QA_BANK = ${JSON.stringify(qaBank,  null, 2)};
   // --------------------------------------------------
 
   try {

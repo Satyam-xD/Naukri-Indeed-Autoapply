@@ -250,6 +250,78 @@ const GENERIC_ANSWER = (() => {
 const OPEN_ENDED_RE =
   /why (do you want|are you interested|this role|this company|us|join)|tell (us|me) about yourself|introduce yourself|about you|(biggest|proudest|favorite) (project|achievement)|describe your (experience|background|skills?)|what (can you|do you) bring|strength|weakness|challenge|motivation/i;
 
+// ── QA Bank Lookup & Recorder ──────────────────────────────────
+
+function findQABankAnswer(qaBank, questionText) {
+  const bank = qaBank || (typeof QA_BANK !== 'undefined' ? QA_BANK : null) || (typeof CONFIG !== 'undefined' ? CONFIG.QA_BANK : null);
+  if (!bank || typeof bank !== 'object') return null;
+
+  const rawQ = String(questionText || '').trim();
+  if (!rawQ) return null;
+
+  const qNorm = rawQ.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!qNorm) return null;
+
+  // Combine answers and any non-empty answers from unanswered
+  const entries = [
+    ...Object.entries(bank.answers || {}),
+    ...Object.entries(bank.unanswered || {}).filter(([_, v]) => v !== undefined && v !== null && String(v).trim().length > 0 && String(v).trim() !== '[NEEDS_ANSWER]')
+  ];
+
+  // 1. Exact match (normalized)
+  for (const [key, val] of entries) {
+    if (val === undefined || val === null || val === '') continue;
+    const kNorm = String(key).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (kNorm === qNorm) return String(val);
+  }
+
+  // 2. Regex pattern match if key is in /pattern/flags format
+  for (const [key, val] of entries) {
+    if (val === undefined || val === null || val === '') continue;
+    if (key.startsWith('/') && key.lastIndexOf('/') > 0) {
+      try {
+        const lastSlash = key.lastIndexOf('/');
+        const pat = key.slice(1, lastSlash);
+        const flags = key.slice(lastSlash + 1) || 'i';
+        const re = new RegExp(pat, flags);
+        if (re.test(rawQ)) return String(val);
+      } catch (_) {}
+    }
+  }
+
+  // 3. Substring match (if key length >= 4)
+  for (const [key, val] of entries) {
+    if (val === undefined || val === null || val === '') continue;
+    const kNorm = String(key).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (kNorm.length >= 4 && (qNorm.includes(kNorm) || kNorm.includes(qNorm))) {
+      return String(val);
+    }
+  }
+
+  // 4. Multi-word keyword overlap (if >= 2 words in key and all present in question)
+  for (const [key, val] of entries) {
+    if (val === undefined || val === null || val === '') continue;
+    const words = String(key).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+    if (words.length >= 2 && words.every(w => qNorm.includes(w))) {
+      return String(val);
+    }
+  }
+
+  return null;
+}
+
+function emitQARecord(item) {
+  try {
+    const payload = JSON.stringify({
+      question: String(item.question || '').slice(0, 150),
+      answer:   String(item.answer   || '').slice(0, 300),
+      status:   item.status || 'known',
+      source:   item.source || 'unknown',
+    });
+    console.log(`[auto-apply] [auto-apply-qa] ${payload}`);
+  } catch (_) {}
+}
+
 const _sharedGeminiCache = (() => {
   try { return new Map(JSON.parse(sessionStorage.getItem('_aaSharedCache') || '[]')); }
   catch (_) { return new Map(); }
@@ -260,11 +332,167 @@ function _cacheSet(k, v) {
   try { sessionStorage.setItem('_aaSharedCache', JSON.stringify([..._sharedGeminiCache.entries()].slice(-120))); } catch (_) {}
 }
 
+function playAlertBeep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (_) {}
+}
+
+function promptUserForAnswer(questionText, defaultVal = '') {
+  playAlertBeep();
+  log(`🚨 [PAUSED] Unknown question: "${questionText.slice(0, 60)}" — Auto-Apply paused!`);
+  log(`👉 Pop-up alert opened in Chrome window. Enter your answer to continue.`);
+
+  try {
+    console.log(`[auto-apply] [auto-apply-pause] ${JSON.stringify({ question: questionText })}`);
+  } catch (_) {}
+
+  return new Promise((resolve) => {
+    try {
+      const oldModal = document.getElementById('__aa_qa_modal');
+      if (oldModal) oldModal.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = '__aa_qa_modal';
+      overlay.style.cssText = [
+        'position: fixed !important',
+        'top: 0 !important',
+        'left: 0 !important',
+        'width: 100vw !important',
+        'height: 100vh !important',
+        'background: rgba(10, 10, 15, 0.82) !important',
+        'z-index: 2147483647 !important',
+        'display: flex !important',
+        'align-items: center !important',
+        'justify-content: center !important',
+        'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important',
+        'backdrop-filter: blur(5px) !important',
+      ].join(';');
+
+      const card = document.createElement('div');
+      card.style.cssText = [
+        'background: #181825 !important',
+        'color: #cdd6f4 !important',
+        'border: 2px solid #fab387 !important',
+        'border-radius: 14px !important',
+        'padding: 24px !important',
+        'width: 540px !important',
+        'max-width: 92vw !important',
+        'box-shadow: 0 16px 40px rgba(0,0,0,0.7), 0 0 25px rgba(250, 179, 135, 0.35) !important',
+      ].join(';');
+
+      const safeQ = String(questionText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const safeVal = String(defaultVal || '').replace(/"/g, '&quot;');
+
+      card.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+          <div style="background:#452219; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:20px;">⚠️</div>
+          <div>
+            <h3 style="margin:0; font-size:18px; color:#fab387; font-weight:700;">Unknown Question — Auto-Apply Paused</h3>
+            <p style="margin:3px 0 0; font-size:12px; color:#a6adc8;">Provide an answer so wrong data isn't submitted. This answer will be saved to <b>qa-bank.json</b>!</p>
+          </div>
+        </div>
+        <div style="background:#11111b; border:1px solid #313244; border-radius:8px; padding:12px; margin-bottom:16px;">
+          <div style="font-size:11px; text-transform:uppercase; color:#89b4fa; font-weight:700; margin-bottom:4px; letter-spacing:0.5px;">Question:</div>
+          <div style="font-size:14px; line-height:1.45; color:#ffffff; font-weight:500;">${safeQ}</div>
+        </div>
+        <div style="margin-bottom:18px;">
+          <label style="display:block; font-size:12px; color:#cdd6f4; margin-bottom:6px; font-weight:600;">Your Answer:</label>
+          <input id="__aa_qa_input" type="text" value="${safeVal}" placeholder="e.g. 1, Yes, Immediate, or your custom answer..." style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:8px; border:1.5px solid #45475a; background:#1e1e2e; color:#fff; font-size:14px; outline:none; transition:border 0.2s;" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button id="__aa_qa_skip" style="background:#313244; color:#cdd6f4; border:none; padding:10px 18px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:600;">Skip Field</button>
+          <button id="__aa_qa_save" style="background:#a6e3a1; color:#11111b; border:none; padding:10px 22px; border-radius:8px; font-size:13px; cursor:pointer; font-weight:700;">Save & Continue</button>
+        </div>
+      `;
+
+      overlay.appendChild(card);
+      (document.body || document.documentElement).appendChild(overlay);
+
+      const input = card.querySelector('#__aa_qa_input');
+      const saveBtn = card.querySelector('#__aa_qa_save');
+      const skipBtn = card.querySelector('#__aa_qa_skip');
+
+      setTimeout(() => {
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 100);
+
+      const cleanup = (val) => {
+        overlay.remove();
+        resolve(val);
+      };
+
+      saveBtn.onclick = () => {
+        const val = input.value.trim();
+        if (val) {
+          emitQARecord({ question: questionText, answer: val, status: 'known', source: 'user' });
+          if (typeof CONFIG !== 'undefined' && CONFIG.QA_BANK && CONFIG.QA_BANK.answers) {
+            CONFIG.QA_BANK.answers[questionText.toLowerCase().trim()] = val;
+          }
+          log(`  ✅ [QA Bank] Answer saved by user: "${val}"`);
+          cleanup(val);
+        } else {
+          input.style.borderColor = '#f38ba8';
+        }
+      };
+
+      skipBtn.onclick = () => {
+        log(`  ⏭ [QA Bank] User chose to skip unknown question`);
+        emitQARecord({ question: questionText, answer: '', status: 'unanswered', source: 'unknown' });
+        cleanup('');
+      };
+
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveBtn.click();
+        }
+      };
+    } catch (err) {
+      log(`  ⚠ Pop-up alert error: ${err.message}`);
+      resolve('');
+    }
+  });
+}
+
+// ── Answer Resolution Pipeline ─────────────────────────────────
+
 async function answerQuestion(questionText) {
-  for (const [pattern, answer] of FACTUAL_QA) {
-    if (pattern.test(questionText)) return answer || '';
+  if (!questionText || !questionText.trim()) return '';
+
+  // 1. Check QA Bank (Highest priority — uses user-defined answers)
+  const bankAnswer = findQABankAnswer(CONFIG.QA_BANK, questionText);
+  if (bankAnswer !== null && bankAnswer !== undefined && bankAnswer !== '') {
+    log(`  💾 [QA Bank] Used saved answer for "${questionText.slice(0, 50)}": "${bankAnswer}"`);
+    return bankAnswer;
   }
 
+  // 2. Check built-in Factual Q&A rules
+  for (const [pattern, answer] of FACTUAL_QA) {
+    if (pattern.test(questionText)) {
+      const factualAns = answer || '';
+      emitQARecord({ question: questionText, answer: factualAns, status: 'known', source: 'profile' });
+      return factualAns;
+    }
+  }
+
+  // 3. Fallback to Gemini AI if configured
   if (CONFIG.geminiKey) {
     const cacheKey = questionText.toLowerCase().trim().slice(0, 120);
     if (_sharedGeminiCache.has(cacheKey)) {
@@ -285,9 +513,18 @@ async function answerQuestion(questionText) {
     if (ans) {
       const result = ans.trim();
       _cacheSet(cacheKey, result);
+      emitQARecord({ question: questionText, answer: result, status: 'known', source: 'gemini' });
       return result;
     }
   }
 
-  return GENERIC_ANSWER;
+  // 4. Unknown question — pause application and pop alert so wrong data doesn't get filled!
+  const userTyped = await promptUserForAnswer(questionText);
+  if (userTyped !== null && userTyped !== undefined && String(userTyped).trim().length > 0) {
+    return String(userTyped).trim();
+  }
+
+  // If user skipped
+  emitQARecord({ question: questionText, answer: '', status: 'unanswered', source: 'unknown' });
+  return '';
 }
