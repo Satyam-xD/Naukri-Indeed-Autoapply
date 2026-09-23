@@ -51,8 +51,7 @@ const CV = {
   relocate:          g('LOCATION') ? `Yes, I am open to relocation. I am currently based in ${g('LOCATION')}.` : 'Yes, I am open to relocation.',
   startDate:         g('NOTICE_PERIOD') ? `I can start within ${g('NOTICE_PERIOD')}.` : 'Available to join immediately.',
 
-  // ── LinkedIn-style extended fields ─────────────────────────────────────────
-  // Notice period in raw days (for months/weeks math in apply.js)
+  // Notice period in raw days (for date calculations)
   noticePeriodDays:   parseInt(g('NOTICE_PERIOD_DAYS', '0'), 10) || 0,
 
   // Address (for street/state/zip/country questions)
@@ -61,16 +60,16 @@ const CV = {
   zipcode:  g('ZIPCODE', '400001'),
   country:  g('COUNTRY', 'India'),
 
-  // EEO / diversity questions (LinkedIn-style: "Decline" is also a valid answer)
+  // EEO and demographic questions
   disabilityStatus: g('DISABILITY_STATUS', 'No'),     // "Yes", "No", "Decline"
   veteranStatus:    g('VETERAN_STATUS',    'No'),     // "Yes", "No", "Decline"
   ethnicity:        g('ETHNICITY',         'Decline'), // "Decline", "Asian", etc.
   usCitizenship:    g('US_CITIZENSHIP',    'Yes'),    // "U.S. Citizen/Permanent Resident", ...
 
-  // Profile answers
-  confidenceLevel:  g('CONFIDENCE_LEVEL', '7'),   // 1-10 scale
-  headline:         g('HEADLINE', ''),             // LinkedIn-style headline
-  summary:          g('SUMMARY',  ''),             // LinkedIn summary / bio
+  // Profile bio and summary
+  confidenceLevel:  g('CONFIDENCE_LEVEL', '7'),
+  headline:         g('HEADLINE', ''),
+  summary:          g('SUMMARY',  ''),
 };
 
 const CREDS = {

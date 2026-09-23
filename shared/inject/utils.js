@@ -1,7 +1,4 @@
-// ============================================================
-// SHARED UTILITIES — injected into the browser page.
-// In-scope for finder.js, apply.js, loop.js across all platforms.
-// ============================================================
+// In-page shared utilities for DOM queries, delay timers, and form answering.
 
 function log(...args) {
   const msg = args.map(String).join(' ');
@@ -207,7 +204,7 @@ const FACTUAL_QA = [
     '1'],
   [/\byears? of exp|experience.*years?|how many years/i, CV.yearsOfExperience || '1'],
 
-  // ── Notice period (months / weeks / days) — LinkedIn-style ───────────────
+  // Notice period
   [/notice.*month|notice.*in month/i,    String(Math.floor((Number(CV.noticePeriodDays) || 0) / 30) || '0')],
   [/notice.*week|notice.*in week/i,      String(Math.floor((Number(CV.noticePeriodDays) || 0) / 7)  || '0')],
   [/notice period|when can you (start|join)|start date|joining/i,
@@ -229,7 +226,7 @@ const FACTUAL_QA = [
   [/(expected|desired).{0,20}(ctc|salary|compensation|pay)|salary expectation/i,
     CV.expectedSalary || '4-6 LPA'],
 
-  // ── Name variants — LinkedIn-style first / middle / last ─────────────────
+  // Name variants
   [/first\s*name/i,    (CV.name || '').split(' ')[0] || CV.name],
   [/middle\s*name/i,   (CV.name || '').split(' ').slice(1, -1).join(' ') || ''],
   [/last\s*name|surname/i,
@@ -256,7 +253,7 @@ const FACTUAL_QA = [
   [/bachelor|degree level/i, "Bachelor's"],
   [/cgpa|gpa|percentage|marks|aggregate/i, '8.2'],
 
-  // ── Diversity / EEO questions — LinkedIn-style ───────────────────────────
+  // Diversity & EEO
   [/disability|handicapped/i,        CV.disabilityStatus   || 'No'],
   [/veteran|protected\s*veteran/i,   CV.veteranStatus      || 'No'],
   [/gender|sex(?!ual)/i,             CV.gender             || 'Male'],

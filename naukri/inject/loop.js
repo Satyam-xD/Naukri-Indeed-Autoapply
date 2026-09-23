@@ -61,9 +61,7 @@ function returnToSearchPage() {
 const isJobPage = /job-listings|job-overview|\/jd\//i.test(location.href);
 
 if (isJobPage) {
-  // ══════════════════════════════════════════════════════════════
-  // BRANCH A: JOB DETAILS PAGE
-  // ══════════════════════════════════════════════════════════════
+  // Branch A: Job details page
   log(`📄 Job page: ${location.href.slice(0, 80)}`);
   markNaukriSeen(location.href.split('?')[0]);
 
@@ -85,9 +83,7 @@ if (isJobPage) {
   returnToSearchPage();
 
 } else {
-  // ══════════════════════════════════════════════════════════════
-  // BRANCH B: SEARCH RESULTS PAGE
-  // ══════════════════════════════════════════════════════════════
+  // Branch B: Search results page
   sessionStorage.setItem('naukri_last_search', location.href);
   log(`🚀 Naukri feed | DRY_RUN=${CONFIG.DRY_RUN} | max=${CONFIG.MAX_APPLICATIONS} | ${naukriSeen.size} seen`);
 
