@@ -234,14 +234,36 @@ async function fillRadioGroups(container) {
     ).trim();
 
     let pick = null;
-    if (/notice\s*period|join/i.test(groupText)) {
-      pick = group.find((r) => /immediate|0[-–]15|15\s*days|< ?15/i.test(labelTextOf(r))) || group[0];
-    } else if (/relocat|move/i.test(groupText)) {
-      pick = group.find((r) => /yes/i.test(labelTextOf(r))) || group[0];
-    } else if (/experience/i.test(groupText)) {
-      pick = group.find((r) => /0|fresher|entry|< ?1/i.test(labelTextOf(r))) || group[0];
-    } else {
-      pick = group.find((r) => /yes/i.test(labelTextOf(r))) || group[0];
+    const bankRadioAns = typeof findQABankAnswer === 'function' ? findQABankAnswer(CONFIG.QA_BANK, groupText) : null;
+    if (bankRadioAns) {
+      const norm = String(bankRadioAns).toLowerCase().trim();
+      pick = group.find((r) => {
+        const lbl = labelTextOf(r).toLowerCase().trim();
+        return lbl.includes(norm) || norm.includes(lbl);
+      });
+    }
+
+    if (!pick) {
+      if (/notice\s*period|join/i.test(groupText)) {
+        pick = group.find((r) => /immediate|0[-–]15|15\s*days|< ?15/i.test(labelTextOf(r))) || group[0];
+      } else if (/relocat|move/i.test(groupText)) {
+        pick = group.find((r) => /yes/i.test(labelTextOf(r))) || group[0];
+      } else if (/experience/i.test(groupText)) {
+        pick = group.find((r) => /0|fresher|entry|< ?1/i.test(labelTextOf(r))) || group[0];
+      } else {
+        const optionLabels = group.map((r) => labelTextOf(r).trim()).filter(Boolean);
+        const userChoice = await answerQuestion(groupText, optionLabels);
+        if (userChoice) {
+          const lowerAns = userChoice.toLowerCase().trim();
+          pick = group.find((r) => {
+            const lbl = labelTextOf(r).toLowerCase().trim();
+            return lbl === lowerAns || lbl.includes(lowerAns) || lowerAns.includes(lbl);
+          });
+        }
+        if (!pick) {
+          pick = group.find((r) => /yes/i.test(labelTextOf(r))) || group[0];
+        }
+      }
     }
 
     if (pick && !pick.checked) {
@@ -279,9 +301,20 @@ async function fillCustomRadios(container) {
       } else if (/experience/i.test(grpText)) {
         pick = opts.find((o) => /^0|fresher|0[-–]1|less than/i.test(o.textContent)) || opts[0];
       } else {
-        pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
-        if (typeof emitQARecord === 'function' && grpText.length > 3) {
-          emitQARecord({ question: grpText, answer: '', status: 'unanswered', source: 'unknown' });
+        const optionLabels = opts.map((o) => o.textContent?.trim()).filter(Boolean);
+        const userChoice = await answerQuestion(grpText, optionLabels);
+        if (userChoice) {
+          const lowerAns = userChoice.toLowerCase().trim();
+          pick = opts.find((o) => {
+            const lbl = o.textContent?.toLowerCase().trim() || '';
+            return lbl === lowerAns || lbl.includes(lowerAns) || lowerAns.includes(lbl);
+          });
+        }
+        if (!pick) {
+          pick = opts.find((o) => /yes/i.test(o.textContent)) || opts[0];
+          if (typeof emitQARecord === 'function' && grpText.length > 3) {
+            emitQARecord({ question: grpText, answer: '', status: 'unanswered', source: 'unknown' });
+          }
         }
       }
     }
@@ -385,6 +418,10 @@ async function fillTextInputs(container) {
     }
 
     if (val !== null && val !== '') {
+      if (inp.type === 'number' || /years?|experience|ctc|salary|marks|percentage/i.test(label)) {
+        const numMatch = String(val).match(/\d+/);
+        if (numMatch) val = numMatch[0];
+      }
       setValue(inp, String(val));
       if (/\bcity\b|location/i.test(label)) {
         await sleep(500);
@@ -463,15 +500,13 @@ async function fillSelectDropdowns(container) {
       }
     }
 
-    if (!opt && options.length > 1 && CONFIG.geminiKey) {
-      const optStr = options.slice(0, 12).map((o) => `"${o.text}"`).join(', ');
-      const answer = await answerQuestion(
-        `Job application field: "${label}". Options: ${optStr}. Pick best option for a fresher developer in India. Reply with exact option text.`
-      );
-      if (answer) {
-        const norm = answer.toLowerCase().trim();
-        opt = options.find((o) => o.text.toLowerCase().includes(norm.slice(0, 20))) ||
-              options.find((o) => norm.includes(o.text.toLowerCase().slice(0, 20)));
+    if (!opt && options.length > 0) {
+      const optionTexts = options.map((o) => o.text.trim()).filter(Boolean);
+      const userChoice = await answerQuestion(label, optionTexts);
+      if (userChoice) {
+        const norm = userChoice.toLowerCase().trim();
+        opt = options.find((o) => o.text.toLowerCase().trim() === norm) ||
+              options.find((o) => o.text.toLowerCase().includes(norm) || norm.includes(o.text.toLowerCase().trim()));
       }
     }
 

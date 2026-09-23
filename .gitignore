@@ -9,3 +9,4 @@ apply-state-*.json
 applications*.csv
 blocked-*.png
 blocked-step-*.png
+qa-bank.json

@@ -200,8 +200,6 @@ const FACTUAL_QA = [
   // ── Experience ───────────────────────────────────────────────────────────
   [/years? of (work |professional )?experience|how (long|many years)|total experience/i,
     `I have ${CV.yearsOfExperience || '1 year of experience'}. Hands-on with ${(CV.skills || '').split(',').slice(0, 6).join(', ') || 'modern web development'}.`],
-  [/experience with (react|node|javascript|python|frontend|backend|web)/i,
-    '1'],
   [/\byears? of exp|experience.*years?|how many years/i, CV.yearsOfExperience || '1'],
 
   // Notice period
@@ -436,7 +434,7 @@ function playAlertBeep() {
   } catch (_) {}
 }
 
-function promptUserForAnswer(questionText, defaultVal = '') {
+function promptUserForAnswer(questionText, defaultVal = '', options = []) {
   playAlertBeep();
   log(`🚨 [PAUSED] Unknown question: "${questionText.slice(0, 60)}" — Auto-Apply paused!`);
   log(`👉 Pop-up alert opened in Chrome window. Enter your answer to continue.`);
@@ -483,6 +481,22 @@ function promptUserForAnswer(questionText, defaultVal = '') {
       const safeQ = String(questionText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const safeVal = String(defaultVal || '').replace(/"/g, '&quot;');
 
+      const optionsHtml = Array.isArray(options) && options.length > 0
+        ? `
+          <div style="margin-bottom:14px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#89b4fa; font-weight:700; margin-bottom:8px; letter-spacing:0.5px;">Click to select option:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:160px; overflow-y:auto;">
+              ${options.map((opt) => {
+                const s = String(opt || '').trim();
+                const safeOpt = s.replace(/"/g, '&quot;');
+                const safeDisplay = s.replace(/</g, '&lt;');
+                return `<button type="button" class="__aa_opt_btn" data-val="${safeOpt}" style="background:#313244; color:#cdd6f4; border:1px solid #45475a; border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer; font-weight:500;">${safeDisplay}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        `
+        : '';
+
       card.innerHTML = `
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
           <div style="background:#452219; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:20px;">⚠️</div>
@@ -495,6 +509,7 @@ function promptUserForAnswer(questionText, defaultVal = '') {
           <div style="font-size:11px; text-transform:uppercase; color:#89b4fa; font-weight:700; margin-bottom:4px; letter-spacing:0.5px;">Question:</div>
           <div style="font-size:14px; line-height:1.45; color:#ffffff; font-weight:500;">${safeQ}</div>
         </div>
+        ${optionsHtml}
         <div style="margin-bottom:18px;">
           <label style="display:block; font-size:12px; color:#cdd6f4; margin-bottom:6px; font-weight:600;">Your Answer:</label>
           <input id="__aa_qa_input" type="text" value="${safeVal}" placeholder="e.g. 1, Yes, Immediate, or your custom answer..." style="width:100%; box-sizing:border-box; padding:11px 14px; border-radius:8px; border:1.5px solid #45475a; background:#1e1e2e; color:#fff; font-size:14px; outline:none; transition:border 0.2s;" />
@@ -511,6 +526,13 @@ function promptUserForAnswer(questionText, defaultVal = '') {
       const input = card.querySelector('#__aa_qa_input');
       const saveBtn = card.querySelector('#__aa_qa_save');
       const skipBtn = card.querySelector('#__aa_qa_skip');
+
+      card.querySelectorAll('.__aa_opt_btn').forEach((btn) => {
+        btn.onclick = () => {
+          if (input) input.value = btn.getAttribute('data-val') || btn.textContent.trim();
+          if (saveBtn) saveBtn.click();
+        };
+      });
 
       setTimeout(() => {
         if (input) {
@@ -559,7 +581,7 @@ function promptUserForAnswer(questionText, defaultVal = '') {
 
 // ── Answer Resolution Pipeline ─────────────────────────────────
 
-async function answerQuestion(questionText) {
+async function answerQuestion(questionText, options = []) {
   if (!questionText || !questionText.trim()) return '';
 
   // 1. Check QA Bank (Highest priority — uses user-defined answers)
@@ -605,7 +627,7 @@ async function answerQuestion(questionText) {
   }
 
   // 4. Unknown question — pause application and pop alert so wrong data doesn't get filled!
-  const userTyped = await promptUserForAnswer(questionText);
+  const userTyped = await promptUserForAnswer(questionText, '', options);
   if (userTyped !== null && userTyped !== undefined && String(userTyped).trim().length > 0) {
     return String(userTyped).trim();
   }

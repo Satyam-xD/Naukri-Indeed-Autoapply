@@ -386,7 +386,15 @@ async function runSupervisor({
       const isIndeedApplyTab = /smartapply|apply\.indeed|indeed\.com\/beta\/indeedapply|m5\.apply/i.test(url);
       const isIndeedViewJob = /indeed\.com\/viewjob/i.test(url);
 
-      if (isIndeedApplyTab || isIndeedViewJob) {
+      if (isIndeedViewJob) {
+        log(`  🛑 Extra preview tab opened (${url.slice(0, 60)}...) — closing to prevent duplicate search loops`);
+        if (!newPage.isClosed()) {
+          await newPage.close().catch(() => {});
+        }
+        return;
+      }
+
+      if (isIndeedApplyTab) {
         log(`  📑 Indeed apply tab opened (${url.slice(0, 70)}...) — processing in tab...`);
         if (!mainPage.isClosed()) {
           await mainPage.evaluate('window.__aaTabInFlight = true').catch(() => {});

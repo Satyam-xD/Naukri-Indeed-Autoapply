@@ -233,23 +233,13 @@ async function fillIndeedSelects(scopeEl) {
     }
 
     if (chosenIdx === -1 && label.length > 3) {
-      const aiAns = await answerQuestion(label);
-      if (aiAns) {
-        const lowerAns = aiAns.toLowerCase().trim();
-        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(lowerAns.slice(0, 20)));
+      const optionTexts = opts.filter((o, idx) => idx > 0 && o.text.trim()).map((o) => o.text.trim());
+      const userChoice = await answerQuestion(label, optionTexts);
+      if (userChoice) {
+        const lowerAns = userChoice.toLowerCase().trim();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().trim() === lowerAns);
         if (chosenIdx === -1) {
-          const candidatePhrases = /decline|prefer not|not wish/i.test(lowerAns)
-            ? ['Decline', 'not wish', "don't wish", 'Prefer not']
-            : /^yes|agree|i do/i.test(lowerAns)
-            ? ['Yes', 'Agree', 'I do']
-            : /^no|disagree|do not/i.test(lowerAns)
-            ? ['No', 'Disagree', "I don't"]
-            : [aiAns];
-          for (const phrase of candidatePhrases) {
-            const lp = phrase.toLowerCase();
-            chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(lp) || lp.includes(o.text.toLowerCase().trim()));
-            if (chosenIdx !== -1) break;
-          }
+          chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(lowerAns) || lowerAns.includes(o.text.toLowerCase().trim()));
         }
       }
     }
@@ -321,9 +311,20 @@ async function fillIndeedRadios(scopeEl) {
       } else if (/relocat|shift|travel|authorized|eligible|agree|confirm/i.test(groupLabel)) {
         targetRadio = group.find((r) => /^yes/i.test(labelTextOf(r)));
       } else {
-        targetRadio = group.find((r) => /^yes/i.test(labelTextOf(r)));
-        if (typeof emitQARecord === 'function' && groupLabel.length > 3) {
-          emitQARecord({ question: groupLabel, answer: '', status: 'unanswered', source: 'unknown' });
+        const optionLabels = group.map((r) => labelTextOf(r).trim()).filter(Boolean);
+        const userChoice = await answerQuestion(groupLabel, optionLabels);
+        if (userChoice) {
+          const lowerAns = userChoice.toLowerCase().trim();
+          targetRadio = group.find((r) => {
+            const lbl = labelTextOf(r).toLowerCase().trim();
+            return lbl === lowerAns || lbl.includes(lowerAns) || lowerAns.includes(lbl);
+          });
+        }
+        if (!targetRadio) {
+          targetRadio = group.find((r) => /^yes/i.test(labelTextOf(r)));
+          if (typeof emitQARecord === 'function' && groupLabel.length > 3) {
+            emitQARecord({ question: groupLabel, answer: '', status: 'unanswered', source: 'unknown' });
+          }
         }
       }
     }
@@ -510,6 +511,16 @@ async function applyOnIndeedJob(cardObj) {
   log(`▶ Applying: ${title} @ ${company} | ${link}`);
 
   if (cardObj.titleLink) {
+    if (cardObj.titleLink.getAttribute('target') === '_blank') {
+      cardObj.titleLink.removeAttribute('target');
+      cardObj.titleLink.setAttribute('target', '_self');
+    }
+    if (cardObj.el) {
+      cardObj.el.querySelectorAll('a[target="_blank"]').forEach((a) => {
+        a.removeAttribute('target');
+        a.setAttribute('target', '_self');
+      });
+    }
     cardObj.titleLink.scrollIntoView({ block: 'center' });
     await sleep(600);
     cardObj.titleLink.click();

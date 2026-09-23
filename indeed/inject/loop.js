@@ -108,10 +108,9 @@ if (isApplyPage) {
     await sleep(2000);
   }
 
-  var lastSearchStd = sessionStorage.getItem('indeed_last_search');
-  if (lastSearchStd) {
-    location.href = lastSearchStd;
-  } else {
+  try {
+    window.close();
+  } catch (_) {
     window.history.back();
   }
 
