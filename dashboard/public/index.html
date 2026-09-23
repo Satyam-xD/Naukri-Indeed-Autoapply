@@ -51,9 +51,6 @@
         <span class="tab-icon">📄</span> Applications Log
         <span class="badge badge-cyan" id="total-apps-badge">0</span>
       </button>
-      <button class="tab-btn" data-tab="resumes">
-        <span class="tab-icon">📁</span> Dynamic Resumes
-      </button>
     </nav>
 
     <!-- MAIN CONTENT PANELS -->
@@ -144,10 +141,6 @@
               <div class="stat-box">
                 <div class="stat-num" id="stat-qa-pending" style="color: var(--amber);">0</div>
                 <div class="stat-label">Pending Questions</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-num" id="stat-resumes-count">3</div>
-                <div class="stat-label">Active Resumes</div>
               </div>
             </div>
           </div>
@@ -497,40 +490,6 @@
                 <!-- Dynamically injected -->
               </tbody>
             </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- 6. DYNAMIC RESUMES TAB -->
-      <section class="tab-panel" id="panel-resumes">
-        <div class="grid grid-2">
-          <div class="card">
-            <div class="card-header">
-              <h3>Role-to-Resume Keyword Mapping</h3>
-              <p>The bot inspects the job title & description and automatically attaches the best PDF resume</p>
-            </div>
-            <div id="resumes-profile-list" class="profile-list">
-              <!-- Dynamically injected -->
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h3>Available PDF Files in resumes/</h3>
-              <p>Place your customized PDF resumes in the <code>resumes/</code> folder</p>
-            </div>
-            <div class="resume-files-box">
-              <ul id="resume-files-list" class="file-tag-list">
-                <!-- Dynamically injected -->
-              </ul>
-              <div class="hint-box">
-                <span class="hint-icon">💡</span>
-                <div>
-                  <b>How to update resumes:</b>
-                  <p>Drop your real PDF files (e.g. <code>fullstack.pdf</code>, <code>backend.pdf</code>, <code>ai_ml.pdf</code>) directly into <code>d:\well\resumes\</code>. They will be auto-detected and attached during applications!</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

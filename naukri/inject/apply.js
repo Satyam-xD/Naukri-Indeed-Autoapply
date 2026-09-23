@@ -32,8 +32,7 @@ async function applyOnJobDetailsPage() {
 
   log(`▶ Applying: ${title} @ ${company} | ${location.href} | ${salary} | ${expRequired}`);
 
-  // 2. EARLY external bail-out (Item 1) — scan page text BEFORE waiting 5s for button
-  //    Saves ~5s per external job vs the old approach of waiting for the button.
+  // 2. Early external detection — skip jobs redirecting off-platform
   const earlyText = (document.body.innerText || '').slice(0, 4000);
   if (/apply on company site|apply via company\s*website|you('ll| will) be redirected|redirected to (the )?company|apply externally/i.test(earlyText)) {
     log(`  ⏭ Early external detect: "${title}" @ ${company}`);
@@ -50,7 +49,7 @@ async function applyOnJobDetailsPage() {
     return false;
   }
 
-  // 4. Find the apply button (5s timeout instead of 7s — early bail handles most externals above)
+  // 4. Find the apply button
   const applyBtn = await waitFor(() => {
     const candidates = [
       document.querySelector('#apply-button'),

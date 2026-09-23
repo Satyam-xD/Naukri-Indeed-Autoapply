@@ -6,9 +6,8 @@
  */
 'use strict';
 
-const path            = require('path');
-const qaManager       = require('../../shared/runner/qa-manager');
-const { getBestResume } = require('../../shared/runner/resume-selector');
+const path      = require('path');
+const qaManager = require('../../shared/runner/qa-manager');
 
 /** How long the supervisor runs before giving up. */
 const MAX_RUNTIME_MS = 100 * 60 * 1000;  // 100 minutes

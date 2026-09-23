@@ -1,6 +1,6 @@
-# 🚀 Auto-Apply Command Center (v2.5)
+# 🚀 Auto-Apply Command Center (Naukri & Indeed)
 
-> Autonomous, intelligent multi-platform job application system for **Naukri** and **Indeed** built with **Playwright**, **Stealth CDP Automation**, **Local AI / Gemini**, a **Dynamic Q&A Knowledge Bank**, and a **Real-Time Web Dashboard**.
+> Autonomous, intelligent multi-platform job application system for **Naukri** and **Indeed** built with **Playwright**, **Stealth CDP Automation**, **Local AI / Gemini Fallback**, a **Dynamic Q&A Knowledge Bank**, and a **Real-Time Web Dashboard**.
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green?style=flat&logo=node.js)](https://nodejs.org)
 [![Platforms](https://img.shields.io/badge/Platforms-Naukri%20%7C%20Indeed-success?style=flat)](https://naukri.com)
@@ -15,7 +15,6 @@
 - [Key Features](#-key-features)
 - [Local Web Dashboard (Command Center)](#-local-web-dashboard-command-center)
 - [Smart Q&A Bank & Pause Alerts](#-smart-qa-bank--pause-alerts)
-- [Dynamic Resume Switcher](#-dynamic-role-based-resume-switcher)
 - [Architecture](#-architecture)
 - [Getting Started](#-getting-started)
   - [1. Installation](#1-installation)
@@ -23,7 +22,7 @@
   - [3. One-Time Login](#3-one-time-login)
   - [4. Launch Modes](#4-launch-modes)
 - [CLI & Script Reference](#-cli--script-reference)
-- [Automated Scheduling (Windows Task Scheduler)](#-automated-scheduling-windows-task-scheduler)
+- [Automated Scheduling](#-automated-scheduling-windows-task-scheduler)
 - [Troubleshooting & FAQ](#-troubleshooting--faq)
 - [Disclaimer](#-disclaimer)
 
@@ -31,15 +30,14 @@
 
 ## 🌟 Overview
 
-**Auto-Apply Command Center** automates the entire software engineering job application workflow across major job platforms simultaneously:
+**Auto-Apply Command Center** automates the software engineering job application workflow across major job platforms:
 
-1. **Launches stealth Chrome sessions** reusing your existing logins with anti-bot automation flags stripped.
+1. **Launches stealth Chrome/Edge sessions** reusing your existing logins with anti-bot automation flags stripped.
 2. **Filters listings intelligently** by candidate keywords, experience criteria, and senior/lead title blocklists.
-3. **Selects the best resume PDF dynamically** based on job keywords (React, Backend/Python, AI/ML).
-4. **Fills forms with 100% accuracy** using a persistent [qa-bank.json](qa-bank.json) database — pausing and alerting you with an in-page popup if an unknown question appears.
-5. **Automatically solves Cloudflare Turnstile bot challenges** using trusted CDP hardware mouse clicks.
-6. **Streams live execution logs in real time** to a local web dashboard on port `3456`.
-7. **Logs every application** to `applications.csv` while enforcing strict daily safety limits (Naukri: 50/day, Indeed: 60/day).
+3. **Fills forms with 100% accuracy** using a persistent [qa-bank.json](qa-bank.json) database — pausing and alerting you with an in-page popup if an unknown question appears.
+4. **Automatically handles Cloudflare Turnstile bot challenges** using trusted CDP hardware mouse clicks.
+5. **Streams live execution logs in real time** to a local web dashboard on port `3456`.
+6. **Logs every application** to `applications.csv` while enforcing daily safety limits (Naukri: 50/day, Indeed: 60/day).
 
 ---
 
@@ -49,25 +47,18 @@
   - Live execution feed with real-time Server-Sent Events (SSE).
   - One-click launch (`Dry Run` or `Live`) for Naukri or Indeed.
   - Complete **Profile & Settings** editor that updates `.env` directly from the browser.
-  - Live **Q&A Bank editor** and **Applications CSV explorer** (88+ applications loaded).
+  - Live **Q&A Bank editor** and **Applications CSV explorer**.
 
 - ❓ **Persistent Q&A Knowledge Bank (`qa-bank.json`)**:
   - Prioritizes your exact answers for notice period, salary expectations, CTC, experience, relocation, and skills.
   - **Zero wrong answers**: When an unknown question appears, the bot pauses, chimes, and opens an alert popup in Chrome & the dashboard. Once answered, it saves permanently to `qa-bank.json` and resumes automatically.
-
-- 📁 **Dynamic Role-Based Resume Switcher**:
-  - Automatically matches job titles and descriptions against customized PDF resumes:
-    - `fullstack.pdf` → React, Next.js, Frontend, MERN, Full Stack
-    - `backend.pdf` → Python, Go, Node.js, FastAPI, SQL, Microservices
-    - `ai_ml.pdf` → AI, GenAI, LLM, RAG, LangChain, Machine Learning
-  - Seamless file upload attachment relay across both platforms.
 
 - 🛡️ **Cloudflare Turnstile Auto-Solver & Anti-Bot Protection**:
   - Automatically detects Turnstile iframes on Indeed and dispatches trusted CDP hardware clicks.
   - Strips `--enable-automation` and automation extensions to maintain `navigator.webdriver = false`.
 
 - ⚡ **Multi-Platform Parallel Execution**:
-  - Run both platforms in parallel with human-paced randomized delays (60–150s) to protect your accounts.
+  - Run both platforms in parallel with human-paced randomized delays to protect your accounts.
 
 ---
 
@@ -78,17 +69,15 @@ Launch the dashboard at any time with:
 ```bash
 npm run dashboard
 ```
-*(Or `node dashboard/server.js`)*
 
 Open your browser to: 👉 **[http://localhost:3456](http://localhost:3456)**
 
 ### Dashboard Tabs:
 1. **📊 Overview & Controls**: Daily quota progress bars, master launcher (`Start All Live`, `Dry Run All`, `Stop All`), quick metrics, and embedded mini-terminal.
 2. **🖥️ Live Terminal**: Real-time streaming console logs with auto-scroll, copy, clear, and platform filters (`Naukri`, `Indeed`, `Pauses`, `Errors`).
-3. **⚙️ Profile & Settings**: Full candidate profile editor (identity, contact, experience, 5 resume highlights, application defaults, speed delays, API keys) saved directly to `.env`.
+3. **⚙️ Profile & Settings**: Full candidate profile editor (identity, contact, experience, highlights, application defaults, speed delays, API keys) saved directly to `.env`.
 4. **❓ Q&A Bank**: Live searchable knowledge bank table with instant answer modal.
 5. **📄 Applications Log**: Real-time table explorer for `applications.csv` with site dropdown and keyword search.
-6. **📁 Dynamic Resumes**: Active keyword profile mappings and file size inspector for `resumes/`.
 
 ---
 
@@ -107,28 +96,12 @@ The bot maintains a persistent database at [`qa-bank.json`](qa-bank.json):
     "are you willing to relocate": "Yes",
     "languages known": "English, Hindi"
   },
-  "unanswered": []
+  "unanswered": {}
 }
 ```
 
 - **Exact & Fuzzy Match**: Queries like *"How many years of work experience do you have with React?"* automatically match `"experience with react"`.
-- **In-Page & In-Dashboard Alert**: If an unknown question is asked, the bot halts form submission, plays an audio alert, and displays a modal. You type the answer, click **Save & Resume**, and the bot records it permanently so it never stops for that question again.
-
----
-
-## 📁 Dynamic Role-Based Resume Switcher
-
-Resumes are placed inside the [`resumes/`](resumes/) directory:
-
-```text
-resumes/
-├── config.json          # Keyword matcher rules & default fallback
-├── fullstack.pdf        # Targeted for React / Frontend / Full Stack
-├── backend.pdf          # Targeted for Python / Go / Node / Backend
-└── ai_ml.pdf            # Targeted for GenAI / LLM / RAG / Machine Learning
-```
-
-Configure keywords in [`resumes/config.json`](resumes/config.json). The bot scores the job title and description and attaches the matching resume when file upload dialogs appear.
+- **In-Page & In-Dashboard Alert**: If an unknown question is asked, the bot halts form submission, plays an audio alert, and displays a modal. You type the answer, click **Save & Continue**, and the bot records it permanently so it never stops for that question again.
 
 ---
 
@@ -137,30 +110,43 @@ Configure keywords in [`resumes/config.json`](resumes/config.json). The bot scor
 ```text
 ├── dashboard/                   # ⚡ Local Web Control Center
 │   ├── server.js                # Node HTTP server, SSE logs streamer & API
-│   └── public/                  # Modern Glassmorphic Web App (HTML, CSS, JS)
+│   └── public/                  # Clean Modern Web App (HTML, CSS, JS)
 │
 ├── shared/                      # 🔄 Shared Multi-Platform Utilities
 │   ├── runner/
 │   │   ├── browser.js           # Anti-bot Playwright persistent context
 │   │   ├── config.js            # Profile and .env loader
 │   │   ├── qa-manager.js        # Atomic Q&A Bank reader/writer
-│   │   ├── resume-selector.js   # Dynamic role-to-resume scoring
+│   │   ├── daily-state.js       # Daily quota tracking per platform
+│   │   ├── script-builder.js    # Injected bundle assembler
 │   │   └── csv-logger.js        # CSV application logger
 │   └── inject/
 │       └── utils.js             # In-page DOM helpers, countdowns & Q&A matcher
 │
-├── naukri/                      # 📁 Naukri FastApply Applier
-│   ├── runner/supervisor.js     # Naukri watcher & chatbot answerer
-│   └── inject/apply.js          # Naukri questionnaire filler & submitter
+├── naukri/                      # 📋 Naukri FastApply Module
+│   ├── runner/
+│   │   ├── auth.js              # Login verification & auto-fill
+│   │   ├── site.js              # Search URLs & daily quotas
+│   │   └── supervisor.js        # Page watcher & CDP click relay
+│   └── inject/
+│       ├── finder.js            # Card detection & eligibility filter
+│       ├── apply.js             # Form & questionnaire filler
+│       └── loop.js              # Batch runner loop
 │
-├── indeed/                      # 📁 Indeed SmartApply Applier
-│   ├── runner/supervisor.js     # Indeed Turnstile auto-solver & watcher
-│   └── inject/apply.js          # Indeed multi-step form filler & CDP clicker
+├── indeed/                      # 💼 Indeed SmartApply Module
+│   ├── runner/
+│   │   ├── auth.js              # Login verification & auto-fill
+│   │   ├── site.js              # Search URLs & daily quotas
+│   │   └── supervisor.js        # Turnstile auto-solver & watcher
+│   └── inject/
+│       ├── finder.js            # Search results card finder
+│       ├── apply.js             # Multi-step apply handler
+│       └── loop.js              # Application loop
 │
-├── resumes/                     # 📄 PDF Resumes & config.json
 ├── qa-bank.json                 # ❓ Smart Q&A Knowledge Bank
 ├── applications.csv             # 📊 Centralized submitted applications log
 ├── index.js                     # 🚀 Multi-platform unified orchestrator
+├── package.json                 # Project configuration & scripts
 └── .env                         # 🔒 Candidate credentials & settings
 ```
 
@@ -171,14 +157,14 @@ Configure keywords in [`resumes/config.json`](resumes/config.json). The bot scor
 ### 1. Installation
 
 ```powershell
-git clone https://github.com/Satyam-xD/Wellfound-Apply.git
-cd Wellfound-Apply
+git clone https://github.com/Satyam-xD/Naukri-Indeed-Autoapply.git
+cd Naukri-Indeed-Autoapply
 npm install
 ```
 
 ### 2. Configuration via Dashboard or .env
 
-You can configure all details directly in the Web Dashboard at **[http://localhost:3456](http://localhost:3456)** under **Profile & Settings**, or copy [.env.example](.env.example) to `.env`:
+Configure details directly in the Web Dashboard at **[http://localhost:3456](http://localhost:3456)** under **Profile & Settings**, or copy [.env.example](.env.example) to `.env`:
 
 ```powershell
 copy .env.example .env
@@ -186,7 +172,7 @@ copy .env.example .env
 
 ### 3. One-Time Login
 
-Log in once to save your session cookies (never enter passwords during active runs):
+Log in once to save your session cookies:
 
 ```powershell
 # Log in to both platforms sequentially:
@@ -203,7 +189,7 @@ npm run login:indeed
 ```powershell
 npm run dashboard
 ```
-Open **[http://localhost:3456](http://localhost:3456)** and click **"Start All Live"** or **"Test Dry Run"**.
+Open **[http://localhost:3456](http://localhost:3456)** and click **"Start All Live"** or **"Dry Run All"**.
 
 #### Option B: Terminal CLI
 ```powershell
@@ -234,7 +220,7 @@ npm run naukri
 | `node index.js naukri --live` | `npm run naukri` | **Naukri Live**: Runs FastApply on Naukri |
 | `node index.js naukri` | `npm run dry:naukri` | **Naukri Dry Run**: Tests Naukri without submitting |
 | `node index.js naukri login` | `npm run login:naukri` | One-time login to Naukri |
-| `node index.js all --live --offscreen` | `npm run offscreen` | Runs all platforms offscreen without stealing active window focus |
+| `node index.js all --live --offscreen` | `npm run offscreen` | Runs all platforms offscreen |
 
 ---
 
@@ -243,7 +229,7 @@ npm run naukri
 To run the automation automatically every day at 11:00 AM on Windows:
 
 ```powershell
-$repo = "D:\well"
+$repo = (Get-Location).Path
 $action = New-ScheduledTaskAction -Execute "node.exe" -Argument "index.js all --live --offscreen" -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Daily -At 11:00AM
 Register-ScheduledTask -TaskName "AutoApplyDaily" -Action $action -Trigger $trigger -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
@@ -266,7 +252,7 @@ Unregister-ScheduledTask AutoApplyDaily  # Delete schedule
 - **Port 3456 already in use:**
   - Run `taskkill /F /IM node.exe` or start with a custom port: `PORT=3457 npm run dashboard`.
 - **Bot pauses on an unknown question:**
-  - Check the browser window or the Web Dashboard modal. Type your answer and click **Save & Resume** — it will be permanently remembered in `qa-bank.json`.
+  - Check the browser window or the Web Dashboard modal. Type your answer and click **Save & Continue** — it will be permanently remembered in `qa-bank.json`.
 - **Reset daily quota counters:**
   - Counters automatically reset each day. To manually reset, delete `apply-state-naukri.json` or `apply-state-indeed.json`.
 

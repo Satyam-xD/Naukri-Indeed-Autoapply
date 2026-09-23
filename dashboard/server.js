@@ -17,7 +17,6 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const ENV_PATH = path.join(ROOT, '.env');
 
 const qaManager = require('../shared/runner/qa-manager');
-const { loadResumeConfig, RESUMES_DIR, CONFIG_FILE: RESUMES_CONFIG_FILE } = require('../shared/runner/resume-selector');
 
 // Track active child processes spawned from the dashboard
 const activeProcesses = {
@@ -537,37 +536,6 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { applications: apps });
   }
 
-  if (pathname === '/api/resumes' && req.method === 'GET') {
-    const config = loadResumeConfig();
-    let availableFiles = [];
-    try {
-      if (fs.existsSync(RESUMES_DIR)) {
-        availableFiles = fs.readdirSync(RESUMES_DIR)
-          .filter((f) => f.endsWith('.pdf'))
-          .map((f) => {
-            const stats = fs.statSync(path.join(RESUMES_DIR, f));
-            return { name: f, size: stats.size };
-          });
-      }
-    } catch (_) {}
-    return sendJson(res, 200, {
-      config,
-      profiles: config.profiles || config.roles || [],
-      availableFiles,
-      files: availableFiles.map((f) => f.name),
-    });
-  }
-
-  if (pathname === '/api/resumes/config' && req.method === 'POST') {
-    try {
-      const newConfig = await parseBody(req);
-      fs.writeFileSync(RESUMES_CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf8');
-      addLog(`📁 Resume mapping config updated via dashboard.`, 'system', 'success');
-      return sendJson(res, 200, { success: true, config: newConfig });
-    } catch (err) {
-      return sendJson(res, 500, { error: err.message });
-    }
-  }
 
   if (pathname === '/api/runner/status' && req.method === 'GET') {
     const status = {};

@@ -6,9 +6,8 @@
  */
 'use strict';
 
-const path            = require('path');
-const qaManager       = require('../../shared/runner/qa-manager');
-const { getBestResume } = require('../../shared/runner/resume-selector');
+const path      = require('path');
+const qaManager = require('../../shared/runner/qa-manager');
 
 const MAX_RUNTIME_MS = 100 * 60 * 1000;  // 100 minutes
 const IDLE_ROTATE_MS = 5 * 60 * 1000;    // 5 minutes (accounts for 18s card-wait in finder)

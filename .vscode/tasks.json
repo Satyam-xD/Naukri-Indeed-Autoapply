@@ -2,42 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "🌐 Wellfound — LIVE",
-      "type": "shell",
-      "command": "node",
-      "args": ["index.js", "wellfound", "--live", "--no-watch"],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "new",
-        "showReuseMessage": false,
-        "clear": true,
-        "close": false
-      },
-      "runOptions": { "instanceLimit": 1 }
-    },
-    {
-      "label": "🌐 Wellfound — DRY RUN",
-      "type": "shell",
-      "command": "node",
-      "args": ["index.js", "wellfound", "--no-watch"],
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "new",
-        "showReuseMessage": false,
-        "clear": true,
-        "close": false
-      },
-      "runOptions": { "instanceLimit": 1 }
-    },
-    {
       "label": "📋 Naukri — LIVE",
       "type": "shell",
       "command": "node",
@@ -110,32 +74,29 @@
       "runOptions": { "instanceLimit": 1 }
     },
     {
-      "label": "🚀 Run All (3 Platforms) — LIVE",
-      "dependsOn": ["🌐 Wellfound — LIVE", "📋 Naukri — LIVE", "💼 Indeed — LIVE"],
-      "dependsOrder": "parallel",
+      "label": "🚀 Run All (Naukri + Indeed) — LIVE",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "all", "--live"],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": [],
       "group": { "kind": "build", "isDefault": true }
     },
     {
-      "label": "🧪 Run All (3 Platforms) — DRY RUN",
-      "dependsOn": ["🌐 Wellfound — DRY RUN", "📋 Naukri — DRY RUN", "💼 Indeed — DRY RUN"],
-      "dependsOrder": "parallel",
+      "label": "🧪 Run All (Naukri + Indeed) — DRY RUN",
+      "type": "shell",
+      "command": "node",
+      "args": ["index.js", "all"],
+      "options": { "cwd": "${workspaceFolder}" },
       "problemMatcher": []
     },
     {
-      "label": "🔑 Login — Wellfound",
+      "label": "🖥️ Dashboard Web UI",
       "type": "shell",
       "command": "node",
-      "args": ["index.js", "wellfound", "login", "--no-watch"],
+      "args": ["dashboard/server.js"],
       "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": [],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "new",
-        "showReuseMessage": false,
-        "clear": true
-      }
+      "problemMatcher": []
     },
     {
       "label": "🔑 Login — Naukri",

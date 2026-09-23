@@ -32,7 +32,6 @@
       "apply-state-*.json",
       "applications*.csv",
       "qa-bank.json*",
-      "resumes/**",
       "dashboard/**",
       "*.png",
       "node_modules/**"
@@ -47,7 +46,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Satyam-xD/Wellfound-Apply.git"
+    "url": "https://github.com/Satyam-xD/Naukri-Indeed-Autoapply.git"
   },
   "author": "",
   "license": "ISC",

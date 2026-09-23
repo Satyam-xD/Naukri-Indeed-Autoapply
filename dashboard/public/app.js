@@ -3,7 +3,6 @@ let state = {
   stats: null,
   qaBank: null,
   applications: [],
-  resumes: null,
   settings: null,
   logs: [],
   logFilter: 'all',
@@ -28,7 +27,6 @@ const el = {
   statTotalApps: document.getElementById('stat-total-apps'),
   statQaKnown: document.getElementById('stat-qa-known'),
   statQaPending: document.getElementById('stat-qa-pending'),
-  statResumesCount: document.getElementById('stat-resumes-count'),
 
   // Platform Cards
   nkFraction: document.getElementById('nk-fraction'),
@@ -70,10 +68,6 @@ const el = {
   appsSearchInput: document.getElementById('apps-search-input'),
   appsSiteFilter: document.getElementById('apps-site-filter'),
   appsTableBody: document.getElementById('apps-table-body'),
-
-  // Resumes Tab
-  resumesProfileList: document.getElementById('resumes-profile-list'),
-  resumeFilesList: document.getElementById('resume-files-list'),
 
   // Settings Form
   setName: document.getElementById('set-name'),
@@ -388,18 +382,6 @@ async function fetchApplications() {
   }
 }
 
-async function fetchResumes() {
-  try {
-    const res = await fetch('/api/resumes');
-    if (res.ok) {
-      state.resumes = await res.json();
-      renderResumes();
-    }
-  } catch (err) {
-    console.warn('Failed fetching resumes:', err);
-  }
-}
-
 async function fetchSettings() {
   try {
     const res = await fetch('/api/settings');
@@ -413,7 +395,7 @@ async function fetchSettings() {
 }
 
 async function syncAll() {
-  await Promise.all([fetchStats(), fetchQaBank(), fetchApplications(), fetchResumes(), fetchSettings()]);
+  await Promise.all([fetchStats(), fetchQaBank(), fetchApplications(), fetchSettings()]);
   showToast('Synced all data with runner engine');
 }
 
@@ -709,49 +691,6 @@ function renderApplications() {
       </td>
     `;
     el.appsTableBody.appendChild(tr);
-  });
-}
-
-// ── RESUMES CONTROLLER ───────────────────────────────────────
-function renderResumes() {
-  if (!state.resumes) return;
-  const { profiles = [], availableFiles = [] } = state.resumes;
-
-  el.resumesProfileList.innerHTML = '';
-  const profileList = Array.isArray(profiles) ? profiles : Object.values(profiles || {});
-  el.statResumesCount.textContent = profileList.length;
-
-  profileList.forEach(conf => {
-    const card = document.createElement('div');
-    card.className = 'profile-card-item';
-    const keywordsHtml = (conf.keywords || []).map(kw => `<span class="keyword-tag">${escapeHtml(kw)}</span>`).join('');
-    
-    card.innerHTML = `
-      <div class="profile-card-header">
-        <span class="profile-title">${escapeHtml(conf.label || conf.title || conf.id || 'Profile')}</span>
-        <span class="profile-filename">${escapeHtml(conf.file || '')}</span>
-      </div>
-      <div class="profile-keywords">
-        ${keywordsHtml}
-      </div>
-    `;
-    el.resumesProfileList.appendChild(card);
-  });
-
-  el.resumeFilesList.innerHTML = '';
-  availableFiles.forEach(file => {
-    const li = document.createElement('li');
-    li.className = 'file-tag-item';
-    li.innerHTML = `
-      <div class="file-tag-left">
-        <span class="file-icon">📄</span>
-        <span class="file-name">${escapeHtml(file.name)}</span>
-      </div>
-      <span class="badge" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3)">
-        ${(file.size / 1024).toFixed(1)} KB
-      </span>
-    `;
-    el.resumeFilesList.appendChild(li);
   });
 }
 
