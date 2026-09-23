@@ -70,26 +70,11 @@ function startClickRelay(mainPage, log, getJob) {
   let tick = 0;
   const id = setInterval(async () => {
     try {
-      tick++;
-      if (tick % 5 === 0) {
-        try {
-          const hasFileInput = await mainPage.evaluate(() => {
-            const fi = document.querySelector('input[type="file"]');
-            return fi && !fi.disabled && (!fi.files || fi.files.length === 0);
-          }).catch(() => false);
-
-          if (hasFileInput) {
-            const job = typeof getJob === 'function' ? getJob() : null;
-            const resume = getBestResume(job || {});
-            const fiLoc = mainPage.locator('input[type="file"]').first();
-            if (await fiLoc.count() > 0) {
-              await fiLoc.setInputFiles(resume.path);
-              log(`  📄 Attached resume: "${resume.filename}" (${resume.label})`);
-              await mainPage.waitForTimeout(1000);
-            }
-          }
-        } catch (_) {}
+      if (!mainPage || mainPage.isClosed()) {
+        clearInterval(id);
+        return;
       }
+      tick++;
 
       const signal = await mainPage.evaluate(() => {
         const s = window.__aaReadyToSubmit;
@@ -166,6 +151,9 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
       try {
         const jsonStr = text.slice(text.indexOf('[auto-apply-pause]') + '[auto-apply-pause]'.length).trim();
         const data = JSON.parse(jsonStr);
+        if (data.question) {
+          qaManager.recordQA({ question: data.question, answer: '', status: 'unanswered', source: 'unknown' });
+        }
         process.stdout.write('\x07'); // Terminal beep
         log(`\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         log(`  🚨 [PAUSED] Unknown question: "${data.question.slice(0, 60)}"`);
@@ -207,15 +195,8 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
 
     log('  ' + clean.slice(0, 200));
 
-    // Take a screenshot when the script can't find the submit button, or hits a hard block
-    if (/no Submit button|Submit button is disabled|🚫/.test(clean)) {
-      const snapPath = path.join(__dirname, '..', `blocked-${Date.now()}.png`);
-      page.screenshot({ path: snapPath }).catch(() => {});
-      log(`  📸 Screenshot saved: ${snapPath}`);
-    }
 
-    // "▶ Applying: <title> @ <company> | <link> | <salary> | <exp>"   (Wellfound)
-    // "▶ [1/10] <title> @ <company>"                                    (Naukri)
+    // "▶ [1/10] <title> @ <company>"
     const applyMatch = clean.match(/▶ (?:Applying: |\[\d+\/\d+\] )(.+)/);
     if (applyMatch) {
       const [main, link = '', salaryRaw = '', expRaw = ''] = applyMatch[1].split(' | ');
@@ -239,7 +220,7 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
       }, 2500);
     }
 
-    // Detect successful submission (matches both Wellfound and Naukri success messages)
+    // Detect successful submission
     if (/✅ (?:application sent|Applied to)|DRY_RUN — would click/i.test(text)) {
       state.submitted++;
       if (live) dayState.bump();
@@ -269,6 +250,7 @@ function wirePage({ page, site, script, live, target, dayState, logApplication, 
 
   // Re-inject the script on every navigation that matches our site
   page.on('load', async () => {
+    if (page.isClosed()) return;
     const currentUrl = page.url();
 
     // If clicking Apply navigated to an external site, go back to the search URL
@@ -322,25 +304,25 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
   wirePage({ page: mainPage, site, script, live, target, dayState, logApplication, log, state });
 
   // Handle unexpected extra tabs.
-  // • New tabs on naukri.com: Naukri's Apply button sometimes opens the apply
-  //   flow in a new tab (target="_blank"). Inject our script there too so the
-  //   application can complete, then close it and reload main page afterward.
-  // • Truly external tabs (non-naukri.com): close immediately.
   ctx.on('page', async (newPage) => {
-    if (newPage === mainPage) return;
-    const tabUrl = newPage.url() || '';
+    if (!newPage || newPage === mainPage || newPage.isClosed()) return;
+    try {
+      const tabUrl = newPage.url() || '';
 
-    if (/naukri\.com/i.test(tabUrl)) {
-      // Naukri-domain tab: wait for it to fully load, then redirect to main
-      log(`Naukri apply tab opened: ${tabUrl.slice(0, 80)} — redirecting to main tab`);
-      await newPage.waitForLoadState('domcontentloaded').catch(() => {});
-      // Navigate main page to the same Naukri URL so the script runs there
-      await mainPage.goto(tabUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-      await newPage.close().catch(() => {});
-    } else {
-      log(`External tab closed: ${tabUrl.slice(0, 80)}`);
-      await newPage.close().catch(() => {});
-    }
+      if (/naukri\.com/i.test(tabUrl)) {
+        log(`Naukri apply tab opened: ${tabUrl.slice(0, 80)} — redirecting to main tab`);
+        await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+        if (newPage.isClosed()) return;
+        const finalUrl = newPage.url() || tabUrl;
+        if (!mainPage.isClosed()) {
+          await mainPage.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+        }
+        await newPage.close().catch(() => {});
+      } else {
+        log(`External tab closed: ${tabUrl.slice(0, 80)}`);
+        await newPage.close().catch(() => {});
+      }
+    } catch (_) {}
   });
 
   // Kick off the first injection on the already-open page
@@ -355,7 +337,16 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
 
   // ── Supervisor polling loop ───────────────────────────────────────
   while (state.submitted < target && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 30_000)); // check every 30 seconds
+    // Check in 5s intervals up to 30s
+    for (let i = 0; i < 6; i++) {
+      if (mainPage.isClosed() || (ctx.pages && ctx.pages().length === 0)) break;
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    if (mainPage.isClosed() || (ctx.pages && ctx.pages().length === 0)) {
+      log('Browser or page closed — stopping Naukri supervisor.');
+      break;
+    }
+
     const remainingMins = Math.ceil((deadline - Date.now()) / 60_000);
     log(`[Supervisor] ${state.submitted}/${target} submitted | ${remainingMins}m left`);
 
@@ -393,6 +384,7 @@ async function runSupervisor({ ctx, mainPage, site, script, target, live, daySta
       state.lastActivity = Date.now();
     } else {
       // Script is not busy and not idle enough to rotate → re-inject
+      if (mainPage.isClosed()) break;
       await mainPage.evaluate(script).catch((e) =>
         log(`⚠ [re-inject] Script evaluation failed: ${e.message.split('\n')[0]}`)
       );

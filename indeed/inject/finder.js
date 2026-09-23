@@ -3,14 +3,18 @@
 // and yields eligible jobs with "Easily Apply" / Indeed Apply.
 // ============================================================
 
-const INDEED_TITLE_BLOCK_RE = /\b(senior|sr\.?|lead|principal|staff|director|head|vp|vice president|architect|manager|consultant|specialist|expert|verification|captcha)\b/i;
+// ── Block: truly senior / irrelevant roles only ────────────────────────────
+const INDEED_TITLE_BLOCK_RE = /\b(senior|sr\.?\s|lead\s|principal|staff\s|director|head\s(?:of)?|vp\b|vice\s*president|architect|manager|consultant|expert|verification\s*engineer|captcha)\b/i;
 
-const INDEED_TITLE_ALLOW_RE = /\b(software|developer|engineer|programmer|fresher|trainee|intern|junior|jr\.?|associate|web|frontend|front-end|backend|back-end|full-?stack|fullstack|react|node|javascript|typescript|python|golang|java|ai|ml)\b/i;
+// ── Allow: any tech/dev/engineer role at any level ─────────────────────────
+const INDEED_TITLE_ALLOW_RE = /\b(software|developer|engineer|programmer|fresher|trainee|intern|junior|jr\.?|associate|web|frontend|front.?end|backend|back.?end|full.?stack|fullstack|react|node|javascript|typescript|python|golang|java|ai|ml|data|devops|sde|swe|technology|application|tech|mobile|android|ios|cloud|api|database|ui|ux|qa|test|automation)\b/i;
 
-const INDEED_EXP_BLOCK_RE = /\b([3-9]|\d{2,})\+?\s*(?:to\s*\d+\s*)?(?:years?|yrs?)\b/i;
+// ── Exp block: only skip if 5+ years explicitly required ───────────────────
+const INDEED_EXP_BLOCK_RE = /\b([5-9]|\d{2,})\+?\s*(?:to\s*\d+\s*)?(?:years?|yrs?)\s*(?:of\s*)?(?:exp(?:erience)?|work(?:ing)?)\b/i;
 
 function isSeniorOrOverqualified(title = '', snippet = '') {
-  if (INDEED_TITLE_BLOCK_RE.test(title)) return true;
+  const normTitle = title.replace(/[_/\\-]/g, ' ');
+  if (INDEED_TITLE_BLOCK_RE.test(normTitle)) return true;
   if (INDEED_EXP_BLOCK_RE.test(snippet)) return true;
   return false;
 }
@@ -150,8 +154,8 @@ function parseIndeedCard(card, seenHrefs) {
     /easily apply|apply with your indeed resume|indeed apply/i.test(fullCardText)
   );
 
-  var isExternal = !!(
-    /apply on company site/i.test(fullCardText) ||
+  var isExternal = !hasEasilyApply && !!(
+    /\bapply on company site\b/i.test(fullCardText) ||
     card.querySelector('[data-indeed-apply="false"]')
   );
 
@@ -218,9 +222,10 @@ async function findIndeedCards(seenHrefs) {
     if (c.seen) return false;
     if (c.isExternal) return false;
     if (c.overqualified) return false;
-    if (!c.titleAllowed) return false;
+    // titleAllowed is advisory only — don't block unfamiliar-but-valid titles
     return true;
   });
+
 
   log(
     '  📊 Found ' + rawCards.length + ' cards (via "' + (usedSelector || 'none') + '") | ' +

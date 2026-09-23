@@ -91,6 +91,12 @@ async function runNaukri(options = {}) {
       log:            siteLog,
     });
 
+  } catch (err) {
+    if (/Target page, context or browser has been closed|Target closed|browser has been closed/i.test(err.message)) {
+      siteLog('Browser window was closed.');
+    } else {
+      throw err;
+    }
   } finally {
     siteLog('Closing Naukri browser...');
     try { await ctx.close(); } catch (_) {}
@@ -103,6 +109,10 @@ if (require.main === module) {
   (async () => {
     await runNaukri();
   })().catch((err) => {
+    if (/Target page, context or browser has been closed|Target closed|browser has been closed/i.test(err.message)) {
+      console.log(`[naukri] Browser window closed.`);
+      process.exit(0);
+    }
     console.error(`[naukri FATAL] ${err.message}`);
     process.exit(1);
   });

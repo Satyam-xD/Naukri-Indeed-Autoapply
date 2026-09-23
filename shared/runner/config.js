@@ -50,6 +50,27 @@ const CV = {
   remoteOk:          'Yes, I am fully set up for remote work and also open to hybrid/onsite.',
   relocate:          g('LOCATION') ? `Yes, I am open to relocation. I am currently based in ${g('LOCATION')}.` : 'Yes, I am open to relocation.',
   startDate:         g('NOTICE_PERIOD') ? `I can start within ${g('NOTICE_PERIOD')}.` : 'Available to join immediately.',
+
+  // ── LinkedIn-style extended fields ─────────────────────────────────────────
+  // Notice period in raw days (for months/weeks math in apply.js)
+  noticePeriodDays:   parseInt(g('NOTICE_PERIOD_DAYS', '0'), 10) || 0,
+
+  // Address (for street/state/zip/country questions)
+  street:   g('STREET',  '123 Main Street'),
+  state:    g('STATE',   'Maharashtra'),
+  zipcode:  g('ZIPCODE', '400001'),
+  country:  g('COUNTRY', 'India'),
+
+  // EEO / diversity questions (LinkedIn-style: "Decline" is also a valid answer)
+  disabilityStatus: g('DISABILITY_STATUS', 'No'),     // "Yes", "No", "Decline"
+  veteranStatus:    g('VETERAN_STATUS',    'No'),     // "Yes", "No", "Decline"
+  ethnicity:        g('ETHNICITY',         'Decline'), // "Decline", "Asian", etc.
+  usCitizenship:    g('US_CITIZENSHIP',    'Yes'),    // "U.S. Citizen/Permanent Resident", ...
+
+  // Profile answers
+  confidenceLevel:  g('CONFIDENCE_LEVEL', '7'),   // 1-10 scale
+  headline:         g('HEADLINE', ''),             // LinkedIn-style headline
+  summary:          g('SUMMARY',  ''),             // LinkedIn summary / bio
 };
 
 const CREDS = {
@@ -60,5 +81,9 @@ const CREDS = {
 const geminiKey       = g('GEMINI_KEY');
 const minDelaySeconds = parseInt(g('MIN_DELAY_SECONDS', '5'), 10);
 const maxDelaySeconds = parseInt(g('MAX_DELAY_SECONDS', '10'), 10);
+const browserChannel  = g('BROWSER_CHANNEL', 'msedge');
+if (!process.env.BROWSER_CHANNEL) {
+  process.env.BROWSER_CHANNEL = browserChannel;
+}
 
-module.exports = { CV, CREDS, geminiKey, minDelaySeconds, maxDelaySeconds };
+module.exports = { CV, CREDS, geminiKey, minDelaySeconds, maxDelaySeconds, browserChannel };

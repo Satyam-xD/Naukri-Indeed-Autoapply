@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auto-Apply Command Center | Wellfound • Naukri • Indeed</title>
+  <title>Auto-Apply Command Center | Naukri • Indeed</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -61,29 +61,7 @@
       <!-- 1. OVERVIEW TAB -->
       <section class="tab-panel active" id="panel-overview">
         <!-- Quota Progress Grid -->
-        <div class="grid grid-3">
-          <div class="card platform-card" id="card-wellfound">
-            <div class="platform-header">
-              <div class="platform-meta">
-                <span class="platform-badge wf-badge">Wellfound</span>
-                <h3>AngelList Talent</h3>
-              </div>
-              <span class="status-tag" id="status-tag-wf">Idle</span>
-            </div>
-            <div class="progress-wrap">
-              <div class="progress-labels">
-                <span>Today's Applications</span>
-                <span class="progress-fraction" id="wf-fraction">0 / 50</span>
-              </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill wf-fill" id="wf-bar" style="width: 0%"></div>
-              </div>
-            </div>
-            <div class="platform-actions">
-              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', false)">Test Dry Run</button>
-              <button class="btn btn-sm btn-accent" onclick="startRunner('wellfound', true)">Launch Live</button>
-            </div>
-          </div>
+        <div class="grid grid-2">
 
           <div class="card platform-card" id="card-naukri">
             <div class="platform-header">
@@ -137,12 +115,12 @@
           <div class="card">
             <div class="card-header">
               <h3>🚀 Multi-Platform Launcher</h3>
-              <p>Launch all three platforms simultaneously in parallel</p>
+              <p>Launch platforms simultaneously in parallel</p>
             </div>
             <div class="master-controls-body">
-              <p class="text-muted">Runs Wellfound, Naukri, and Indeed together with autonomous human pacing, Cloudflare Turnstile auto-solving, and QA memory.</p>
+              <p class="text-muted">Runs Naukri and Indeed together with autonomous human pacing, Cloudflare Turnstile auto-solving, and QA memory.</p>
               <div class="control-btn-group">
-                <button class="btn btn-outline" onclick="startRunner('all', false)">🧪 Dry Run (All 3)</button>
+                <button class="btn btn-outline" onclick="startRunner('all', false)">🧪 Dry Run (All)</button>
                 <button class="btn btn-success" onclick="startRunner('all', true)">🟢 Start All Live</button>
                 <button class="btn btn-danger" onclick="stopAllRunners()">🛑 Stop All</button>
               </div>
@@ -210,7 +188,6 @@
               <!-- Platform Log Filters -->
               <div class="filter-pill-group">
                 <button class="pill-btn active" data-logfilter="all">All Logs</button>
-                <button class="pill-btn" data-logfilter="wellfound">Wellfound</button>
                 <button class="pill-btn" data-logfilter="naukri">Naukri</button>
                 <button class="pill-btn" data-logfilter="indeed">Indeed</button>
                 <button class="pill-btn" data-logfilter="pause">Pauses</button>
@@ -241,8 +218,6 @@
           <div class="terminal-footer-toolbar">
             <div class="quick-launch-label">⚡ Quick Run:</div>
             <div class="quick-launch-buttons">
-              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', false)">WF Dry</button>
-              <button class="btn btn-sm btn-ghost" onclick="startRunner('wellfound', true)">WF Live</button>
               <button class="btn btn-sm btn-ghost" onclick="startRunner('naukri', false)">Naukri Dry</button>
               <button class="btn btn-sm btn-ghost" onclick="startRunner('naukri', true)">Naukri Live</button>
               <button class="btn btn-sm btn-ghost" onclick="startRunner('indeed', false)">Indeed Dry</button>
@@ -500,7 +475,6 @@
                 <option value="all">All Sites</option>
                 <option value="indeed">Indeed</option>
                 <option value="naukri">Naukri</option>
-                <option value="wellfound">Wellfound</option>
               </select>
             </div>
           </div>

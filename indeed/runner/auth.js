@@ -18,7 +18,8 @@ async function ensureLoggedIn(page, site, creds, log) {
   await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
     log(`⚠ Navigation to job feed failed: ${e.message.split('\n')[0]}`)
   );
-  await page.waitForTimeout(4000);
+  await new Promise((r) => setTimeout(r, 4000));
+  if (page.isClosed()) return false;
 
   const loggedIn = await isIndeedLoggedIn(page);
   if (loggedIn) {
@@ -34,29 +35,34 @@ async function ensureLoggedIn(page, site, creds, log) {
     await page.goto(site.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
       log(`⚠ Navigation to login page failed: ${e.message.split('\n')[0]}`)
     );
-    await page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
+    if (page.isClosed()) return false;
     await autoFillIndeed(page, email, password, log);
   }
 
   log('⏳ Waiting for Indeed login to complete (up to 2 min, handles OTP / CAPTCHA)...');
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    await page.waitForTimeout(3000);
+    if (page.isClosed()) return false;
+    await new Promise((r) => setTimeout(r, 3000));
+    if (page.isClosed()) return false;
     const done = await isIndeedLoggedIn(page);
     if (done) {
       log('✅ Indeed login confirmed! Navigating to job feed...');
       await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
         log(`⚠ Post-login navigation failed: ${e.message.split('\n')[0]}`)
       );
-      await page.waitForTimeout(3000);
+      await new Promise((r) => setTimeout(r, 3000));
       return true;
     }
   }
 
   log('⚠ Indeed login timed out or continuing as guest / saved profile.');
-  await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
-    log(`⚠ Final navigation to job feed failed: ${e.message.split('\n')[0]}`)
-  );
+  if (!page.isClosed()) {
+    await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
+      log(`⚠ Final navigation to job feed failed: ${e.message.split('\n')[0]}`)
+    );
+  }
   return false;
 }
 
@@ -80,12 +86,12 @@ async function autoFillIndeed(page, email, password, log) {
       await page.click(emailSel);
       await page.fill(emailSel, email);
       log(`  ✍ Email entered: ${email}`);
-      await page.waitForTimeout(600);
+      await new Promise((r) => setTimeout(r, 600));
 
       const submitBtn = await page.$('button[type="submit"], button:has-text("Continue"), button:has-text("Next")');
       if (submitBtn) {
         await submitBtn.click();
-        await page.waitForTimeout(2000);
+        await new Promise((r) => setTimeout(r, 2000));
       }
     }
 
@@ -95,7 +101,7 @@ async function autoFillIndeed(page, email, password, log) {
       await page.click(passSel);
       await page.fill(passSel, password);
       log('  ✍ Password entered');
-      await page.waitForTimeout(600);
+      await new Promise((r) => setTimeout(r, 600));
 
       const signinBtn = await page.$('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in")');
       if (signinBtn) {

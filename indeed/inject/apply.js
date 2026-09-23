@@ -87,18 +87,82 @@ async function fillIndeedFormStep(scope, company, title) {
     if (!label) continue;
 
     let answer = '';
+    // ── Name split (LinkedIn-style) ─────────────────────────────────────────
     if (/first\s*name/i.test(label)) {
       answer = CV.name.split(' ')[0] || CV.name;
-    } else if (/last\s*name/i.test(label)) {
-      answer = CV.name.split(' ').slice(1).join(' ') || CV.name.split(' ')[0];
-    } else if (/full\s*name|\bname\b/i.test(label)) {
+    } else if (/middle\s*name/i.test(label)) {
+      const parts = CV.name.split(' ');
+      answer = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+    } else if (/last\s*name|surname/i.test(label)) {
+      const parts = CV.name.split(' ');
+      answer = parts.length > 1 ? parts[parts.length - 1] : CV.name;
+    } else if (/full\s*name|\bname\b|signature|legal name/i.test(label)) {
       answer = CV.name;
+    // ── Contact ──────────────────────────────────────────────────────────────
     } else if (/e-?mail/i.test(label)) {
       answer = CV.email;
     } else if (/phone|mobile/i.test(label)) {
       answer = CV.phone;
-    } else if (/city|location/i.test(label)) {
-      answer = CV.location || 'India';
+    // ── Location ─────────────────────────────────────────────────────────────
+    } else if (/\bcity\b|location|address/i.test(label)) {
+      answer = (CV.location || 'India').split(',')[0].trim();
+    } else if (/\bstreet\b/i.test(label)) {
+      answer = CV.street || '123 Main Street';
+    } else if (/\bstate\b|province/i.test(label)) {
+      answer = CV.state || 'Maharashtra';
+    } else if (/zip|postal/i.test(label)) {
+      answer = CV.zipcode || '400001';
+    } else if (/\bcountry\b/i.test(label)) {
+      answer = CV.country || 'India';
+    // ── Notice period (months / weeks / days) — LinkedIn-style ───────────────
+    } else if (/notice.*month|notice.*in month/i.test(label)) {
+      answer = String(Math.floor((Number(CV.noticePeriodDays) || 0) / 30) || '0');
+    } else if (/notice.*week|notice.*in week/i.test(label)) {
+      answer = String(Math.floor((Number(CV.noticePeriodDays) || 0) / 7) || '0');
+    } else if (/notice\s*period/i.test(label)) {
+      answer = CV.startDate || 'Immediate';
+    // ── Salary — current (lakh / monthly / raw) — LinkedIn-style ─────────────
+    } else if (/current.{0,20}(ctc|salary|compensation).*(lpa|lakh)/i.test(label)) {
+      answer = String(CV.currentCTC || '0').replace(/[^0-9.]/g, '') || '0';
+    } else if (/current.{0,20}(ctc|salary|compensation).*month/i.test(label)) {
+      answer = String(Math.round((Number(String(CV.currentSalary || '0').replace(/[^0-9]/g, '')) || 0) / 12));
+    } else if (/current.{0,20}(ctc|salary|compensation)/i.test(label)) {
+      answer = CV.currentSalary || '0';
+    // ── Salary — expected (lakh / monthly / raw) — LinkedIn-style ────────────
+    } else if (/(expected|desired).{0,20}(ctc|salary|compensation|pay).*(lpa|lakh)/i.test(label)) {
+      answer = String(CV.expectedCTC || '4').match(/\d+/)?.[0] || '4';
+    } else if (/(expected|desired).{0,20}(ctc|salary|compensation|pay).*month/i.test(label)) {
+      answer = String(Math.round((Number(String(CV.expectedSalary || '4').replace(/[^0-9]/g, '')) || 400000) / 12));
+    } else if (/(expected|desired).{0,20}(ctc|salary|compensation|pay)|salary expectation/i.test(label)) {
+      answer = CV.expectedSalary || '4-6 LPA';
+    // ── Diversity / EEO — LinkedIn-style ─────────────────────────────────────
+    } else if (/disability|handicapped/i.test(label)) {
+      answer = CV.disabilityStatus || 'No';
+    } else if (/veteran|protected.*veteran/i.test(label)) {
+      answer = CV.veteranStatus || 'No';
+    } else if (/gender|sex(?!ual)/i.test(label)) {
+      answer = CV.gender || 'Male';
+    } else if (/ethnicity|race/i.test(label)) {
+      answer = CV.ethnicity || 'Decline';
+    } else if (/citizenship|employment eligibility/i.test(label)) {
+      answer = CV.usCitizenship || 'Yes';
+    // ── Online presence / misc ────────────────────────────────────────────────
+    } else if (/linkedin/i.test(label)) {
+      answer = CV.linkedin || '';
+    } else if (/github/i.test(label)) {
+      answer = CV.github || '';
+    } else if (/portfolio|personal website/i.test(label)) {
+      answer = CV.portfolio || CV.github || '';
+    } else if (/headline/i.test(label)) {
+      answer = CV.headline || CV.currentRole || '';
+    } else if (/recent\s*employer/i.test(label)) {
+      answer = CV.company || 'Not Applicable';
+    } else if (/scale of 1.{0,4}10|confidence level|rate yourself/i.test(label)) {
+      answer = CV.confidenceLevel || '7';
+    } else if (/education|degree/i.test(label)) {
+      answer = CV.education || "Bachelor's";
+    } else if (/cgpa|gpa|percentage|marks/i.test(label)) {
+      answer = '8.2';
     } else {
       answer = await answerQuestion(label);
     }
@@ -111,7 +175,16 @@ async function fillIndeedFormStep(scope, company, title) {
       if (numMatch) answer = numMatch[0];
     }
 
+    // LinkedIn-style: city/location fields need ArrowDown+Enter to dismiss autocomplete
+    const needsAutocomplete = /\bcity\b|location/i.test(label) && answer;
+
     setValue(input, answer);
+    if (needsAutocomplete) {
+      await sleep(500);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await sleep(300);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
     filledAny = true;
     await sleep(200);
   }
@@ -123,14 +196,16 @@ async function fillIndeedFormStep(scope, company, title) {
     const label = labelTextOf(ta);
 
     let answer = '';
-    if (/cover\s*letter|message|additional|why\s*(should\s*we|hire|join)/i.test(label)) {
+    // LinkedIn-style: summary → CV.summary, cover → coverLetter(), else Gemini
+    if (/\bsummary\b/i.test(label)) {
+      answer = CV.summary || await answerQuestion(label);
+    } else if (/cover\s*letter|message|additional|why\s*(should\s*we|hire|join)/i.test(label)) {
       answer = coverLetter(company, title);
     } else {
       answer = await answerQuestion(label);
     }
 
-    setValue(ta, answer);
-    filledAny = true;
+    if (answer) { setValue(ta, answer); filledAny = true; }
     await sleep(200);
   }
 
@@ -139,6 +214,9 @@ async function fillIndeedFormStep(scope, company, title) {
   for (const sel of selects) {
     if (sel.selectedIndex > 0 && sel.value) continue;
     const label = labelTextOf(sel);
+
+    // Skip phone country code — LinkedIn bot explicitly skips this dropdown
+    if (/phone country code/i.test(label)) continue;
 
     let chosenIdx = -1;
     const opts = [...sel.options];
@@ -150,14 +228,71 @@ async function fillIndeedFormStep(scope, company, title) {
       chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(norm) || norm.includes(o.text.toLowerCase().trim()));
     }
 
+    // Rule-based matching (LinkedIn-style)
     if (chosenIdx === -1) {
       if (/authorized|eligible|work in|relocate|degree|bachelor|immediate/i.test(label)) {
         chosenIdx = opts.findIndex((o) => /^yes/i.test(o.text.trim()));
       } else if (/sponsorship|require.*visa/i.test(label)) {
         chosenIdx = opts.findIndex((o) => /^no/i.test(o.text.trim()));
+      } else if (/gender/i.test(label)) {
+        const g = (CV.gender || 'Male').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(g));
+      } else if (/disability|handicapped/i.test(label)) {
+        const d = (CV.disabilityStatus || 'No').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(d));
+      } else if (/veteran/i.test(label)) {
+        const v = (CV.veteranStatus || 'No').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(v));
+      } else if (/ethnicity|race/i.test(label)) {
+        const e = (CV.ethnicity || 'Decline').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(e.slice(0, 6)));
+      } else if (/proficiency/i.test(label)) {
+        chosenIdx = opts.findIndex((o) => /professional/i.test(o.text));
+        if (chosenIdx === -1) chosenIdx = opts.findIndex((o) => /intermediate|full/i.test(o.text));
+      } else if (/notice/i.test(label)) {
+        chosenIdx = opts.findIndex((o) => /immediate|0\s*days?|15\s*days?/i.test(o.text));
+      } else if (/experience|exp/i.test(label)) {
+        chosenIdx = opts.findIndex((o) => /^0|^less\s*than\s*1|fresher/i.test(o.text));
+      } else if (/country/i.test(label)) {
+        const c = (CV.country || 'India').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(c));
+      } else if (/state/i.test(label)) {
+        const s = (CV.state || 'Maharashtra').toLowerCase();
+        chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(s));
       }
     }
 
+    // LinkedIn-style fuzzy phrase fallback: try answer from answerQuestion then map onto options
+    if (chosenIdx === -1) {
+      const aiLabel = label.length > 3 ? label : null;
+      if (aiLabel) {
+        const aiAns = await answerQuestion(aiLabel);
+        if (aiAns) {
+          const lowerAns = aiAns.toLowerCase().trim();
+          // Direct option text match
+          chosenIdx = opts.findIndex((o) => o.text.toLowerCase().includes(lowerAns.slice(0, 20)));
+          // LinkedIn-style phrase mapping (Decline, Yes, No)
+          if (chosenIdx === -1) {
+            const candidatePhrases = /decline|prefer not|not wish/i.test(lowerAns)
+              ? ['Decline', 'not wish', "don't wish", 'Prefer not', 'not want']
+              : /^yes|agree|i do/i.test(lowerAns)
+              ? ['Yes', 'Agree', 'I do', 'I have']
+              : /^no|disagree|do not/i.test(lowerAns)
+              ? ['No', 'Disagree', "I don't", 'I do not']
+              : [aiAns];
+            for (const phrase of candidatePhrases) {
+              const lp = phrase.toLowerCase();
+              chosenIdx = opts.findIndex((o) =>
+                o.text.toLowerCase().includes(lp) || lp.includes(o.text.toLowerCase().trim())
+              );
+              if (chosenIdx !== -1) break;
+            }
+          }
+        }
+      }
+    }
+
+    // Last resort: pick first non-empty, non-placeholder option
     if (chosenIdx === -1) {
       chosenIdx = opts.findIndex((o, idx) => idx > 0 && o.value && o.text.trim());
       if (typeof emitQARecord === 'function' && label.length > 3) {
@@ -214,8 +349,23 @@ async function fillIndeedFormStep(scope, company, title) {
     }
 
     if (!targetRadio) {
-      const isSponsorship = /sponsorship|require.*visa/i.test(groupLabel);
-      if (isSponsorship) {
+      // LinkedIn-style: specific field rules first
+      if (/citizenship|employment eligibility/i.test(groupLabel)) {
+        targetRadio = group.find((r) => /citizen|yes|authorized|eligible/i.test(labelTextOf(r)));
+      } else if (/veteran|protected/i.test(groupLabel)) {
+        const v = (CV.veteranStatus || 'No').toLowerCase();
+        targetRadio = group.find((r) => labelTextOf(r).toLowerCase().includes(v));
+      } else if (/disability|handicapped/i.test(groupLabel)) {
+        const d = (CV.disabilityStatus || 'No').toLowerCase();
+        // LinkedIn uses Decline → map to "prefer not" phrasing
+        const possiblePhrases = d === 'decline'
+          ? ['Decline', 'not wish', "don't wish", 'Prefer not', 'not want']
+          : [d];
+        for (const phrase of possiblePhrases) {
+          targetRadio = group.find((r) => labelTextOf(r).toLowerCase().includes(phrase.toLowerCase()));
+          if (targetRadio) break;
+        }
+      } else if (/sponsorship|require.*visa/i.test(groupLabel)) {
         targetRadio = group.find((r) => /^no/i.test(labelTextOf(r)));
       } else if (/relocat|shift|travel|authorized|eligible|agree|confirm/i.test(groupLabel)) {
         targetRadio = group.find((r) => /^yes/i.test(labelTextOf(r)));
@@ -235,16 +385,25 @@ async function fillIndeedFormStep(scope, company, title) {
     }
   }
 
-  // 5. Checkboxes (terms / agreements / authorizations)
+  // 5. Checkboxes — LinkedIn-style: always check ALL unchecked boxes
+  //    (consent, terms, follow, agree — all of them, not just consent-named ones)
   const checkboxes = [...scopeEl.querySelectorAll('input[type="checkbox"]')].filter(visible);
   for (const cb of checkboxes) {
     if (cb.checked) continue;
-    const label = labelTextOf(cb);
-    if (/terms|agree|privacy|consent|authorize|acknowledge|certify|confirm/i.test(label)) {
-      cb.click();
-      filledAny = true;
-      await sleep(150);
-    }
+    const label = labelTextOf(cb).toLowerCase();
+    // Skip "unsubscribe" or "do not contact" type boxes
+    if (/unsubscribe|opt.out|do not (contact|email|send)/i.test(label)) continue;
+    cb.click();
+    filledAny = true;
+    await sleep(150);
+  }
+
+  // 6. Date picker — LinkedIn-style: click today's date if present
+  const todayBtn = scopeEl.querySelector('button[aria-label*="This is today"], button[aria-label*="today" i][class*="calendar" i], td[aria-label*="today" i] button');
+  if (todayBtn && visible(todayBtn)) {
+    todayBtn.click();
+    filledAny = true;
+    await sleep(300);
   }
 
   return filledAny;

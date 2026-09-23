@@ -14,7 +14,7 @@ function todayKey() {
 }
 
 class DailyState {
-  constructor(siteName = 'wellfound', cap = 50) {
+  constructor(siteName = 'naukri', cap = 50) {
     this.siteName  = siteName;
     this.cap       = cap;
     this.today     = todayKey();

@@ -8,12 +8,12 @@
  * PowerShell window (if run from a plain terminal).
  *
  * USAGE:
- *   node index.js all --live            Both Wellfound + Naukri in split terminals
- *   node index.js wellfound --live      Only Wellfound
+ *   node index.js all --live            Both Naukri + Indeed in split terminals
  *   node index.js naukri --live         Only Naukri
+ *   node index.js indeed --live         Only Indeed
  *   node index.js all login             One-time: log in to both platforms
- *   node index.js wellfound login       One-time: log in to Wellfound only
  *   node index.js naukri login          One-time: log in to Naukri only
+ *   node index.js indeed login          One-time: log in to Indeed only
  */
 'use strict';
 
@@ -27,9 +27,9 @@ const OFFSCREEN  = process.argv.includes('--offscreen');
 const NO_WATCH   = process.argv.includes('--no-watch');
 const IS_CHILD   = process.env.AA_CHILD === '1'; // spawned by the orchestrator
 
-const VALID_SITES = ['wellfound', 'naukri', 'indeed', 'all'];
+const VALID_SITES = ['naukri', 'indeed', 'all'];
 if (!VALID_SITES.includes(SITE_ARG)) {
-  console.error('Usage: node index.js [wellfound|naukri|indeed|all] [login|--live|--offscreen]');
+  console.error('Usage: node index.js [naukri|indeed|all] [login|--live|--offscreen]');
   process.exit(1);
 }
 
@@ -51,7 +51,7 @@ if (shouldSplit) {
   const ts  = () => new Date().toLocaleString('en-IN');
   const log = (msg) => console.log(`[${ts()}] [main] ${msg}`);
 
-  const sites = ['wellfound', 'naukri', 'indeed'];
+  const sites = ['naukri', 'indeed'];
   const baseArgs = [
     path.join(__dirname, 'index.js'),
     '--no-watch',
@@ -60,7 +60,6 @@ if (shouldSplit) {
   ];
 
   const labels = {
-    wellfound: '🌐 Wellfound',
     naukri:    '📋 Naukri',
     indeed:    '💼 Indeed',
   };
@@ -121,7 +120,6 @@ if (shouldSplit) {
     }
 
     log('✅ Opened separate PowerShell windows for each platform.');
-    log('   🌐 Wellfound — running in its own window');
     log('   📋 Naukri    — running in its own window');
     log('   💼 Indeed    — running in its own window');
   }
@@ -148,10 +146,9 @@ if (!isChild && !NO_WATCH && !LOGIN_MODE) {
     nodemon({
       script: path.join(__dirname, 'index.js'),
       args:   [...args, '--no-watch'],
-      watch:  ['index.js', '.env', 'wellfound', 'naukri', 'indeed'],
+      watch:  ['index.js', '.env', 'naukri', 'indeed'],
       ext:    'js,json,env',
       ignore: [
-        '.wellfound-chrome-profile/**',
         '.naukri-chrome-profile/**',
         '.indeed-chrome-profile/**',
         '.*-chrome-profile/**',
@@ -180,7 +177,6 @@ if (!isChild && !NO_WATCH && !LOGIN_MODE) {
 }
 
 // ── Platform Runners ──────────────────────────────────────────
-const { runWellfound } = require('./wellfound');
 const { runNaukri }    = require('./naukri');
 const { runIndeed }    = require('./indeed');
 
@@ -212,7 +208,6 @@ async function closeAllBrowsers() {
 });
 
 const runners = {
-  wellfound: (opts) => runWellfound({ ...opts, openContexts }),
   naukri:    (opts) => runNaukri({ ...opts, openContexts }),
   indeed:    (opts) => runIndeed({ ...opts, openContexts }),
 };
@@ -220,7 +215,7 @@ const runners = {
 // ── Main Orchestrator ─────────────────────────────────────────
 (async () => {
   const sitesToRun = SITE_ARG === 'all'
-    ? ['wellfound', 'naukri', 'indeed']
+    ? ['naukri', 'indeed']
     : [SITE_ARG];
 
   const opts = { live: LIVE, loginMode: LOGIN_MODE, offscreen: OFFSCREEN };
@@ -236,6 +231,10 @@ const runners = {
 
   log('🏁 All requested platform runs complete.');
 })().catch((err) => {
+  if (/Target page, context or browser has been closed|Target closed|browser has been closed/i.test(err.message)) {
+    log('Browser window was closed.');
+    process.exit(0);
+  }
   console.error(`[FATAL] ${err.message}`);
   process.exit(1);
 });

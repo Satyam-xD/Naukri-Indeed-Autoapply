@@ -12,7 +12,7 @@ const qaManager = require('./qa-manager');
  * buildScript — bundles the shared utilities and site-specific inject scripts into one IIFE.
  *
  * @param {object} opts
- * @param {string} opts.site             e.g. 'wellfound' | 'naukri' | 'indeed'
+ * @param {string} opts.site             e.g. 'naukri' | 'indeed'
  * @param {object} opts.CV               Candidate profile object
  * @param {string} [opts.geminiKey]      Gemini API key
  * @param {boolean} [opts.dryRun]        Dry run mode flag

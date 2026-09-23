@@ -67,11 +67,7 @@ function saveQABankNow() {
 }
 
 function scheduleSave() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveQABankNow();
-    saveTimer = null;
-  }, 600);
+  saveQABankNow();
 }
 
 /**
@@ -85,44 +81,58 @@ function scheduleSave() {
  */
 function recordQA({ question, answer = '', status = 'known', source = 'profile' }) {
   const normQ = normalizeQuestion(question);
-  if (!normQ || normQ.length < 3) return;
+  if (!normQ || normQ.length < 2) return;
 
   const bank = loadQABank();
+  if (!bank.answers) bank.answers = {};
+  if (!bank.unanswered) bank.unanswered = {};
+
   let changed = false;
 
+  const isUnansweredArray = Array.isArray(bank.unanswered);
   const hasInAnswers = Object.prototype.hasOwnProperty.call(bank.answers, normQ);
-  const hasInUnanswered = Object.prototype.hasOwnProperty.call(bank.unanswered, normQ);
+  const hasInUnanswered = isUnansweredArray
+    ? bank.unanswered.some((item) => (typeof item === 'string' ? normalizeQuestion(item) : normalizeQuestion(item?.question)) === normQ)
+    : Object.prototype.hasOwnProperty.call(bank.unanswered, normQ);
 
   // If user already typed an answer in 'unanswered', move it to 'answers'
-  if (hasInUnanswered && bank.unanswered[normQ] && String(bank.unanswered[normQ]).trim()) {
+  if (!isUnansweredArray && hasInUnanswered && bank.unanswered[normQ] && String(bank.unanswered[normQ]).trim()) {
     bank.answers[normQ] = String(bank.unanswered[normQ]).trim();
     delete bank.unanswered[normQ];
     changed = true;
   }
 
-  if (status === 'unanswered' || (!answer && answer !== 0)) {
-    // If we don't have an answer in 'answers', log to 'unanswered'
-    if (!hasInAnswers) {
-      if (!hasInUnanswered) {
+  const ansStr = String(answer || '').trim();
+
+  if (status === 'unanswered' || !ansStr) {
+    // If we don't already have an answer in 'answers', log to 'unanswered'
+    if (!hasInAnswers && !hasInUnanswered) {
+      if (isUnansweredArray) {
+        bank.unanswered.push(normQ);
+      } else {
         bank.unanswered[normQ] = '';
-        changed = true;
       }
+      changed = true;
     }
   } else {
-    // We have an answer (from Gemini, rule, etc.)
+    // We have a concrete answer
     if (hasInUnanswered) {
-      delete bank.unanswered[normQ];
+      if (isUnansweredArray) {
+        bank.unanswered = bank.unanswered.filter((item) => (typeof item === 'string' ? normalizeQuestion(item) : normalizeQuestion(item?.question)) !== normQ);
+      } else {
+        delete bank.unanswered[normQ];
+      }
       changed = true;
     }
     // Only set if not already present, or if explicitly provided by the user
     if (!hasInAnswers || source === 'user') {
-      bank.answers[normQ] = String(answer).trim();
+      bank.answers[normQ] = ansStr;
       changed = true;
     }
   }
 
   if (changed) {
-    scheduleSave();
+    saveQABankNow();
   }
 }
 

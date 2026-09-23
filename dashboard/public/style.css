@@ -313,12 +313,6 @@ body {
   display: inline-block;
 }
 
-.wf-badge {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
 .nk-badge {
   background: rgba(59, 130, 246, 0.15);
   color: #93c5fd;
@@ -380,7 +374,6 @@ body {
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.wf-fill { background: linear-gradient(90deg, #ef4444, #f97316); }
 .nk-fill { background: linear-gradient(90deg, #3b82f6, #6366f1); }
 .ind-fill { background: linear-gradient(90deg, #10b981, #06b6d4); }
 
@@ -756,7 +749,6 @@ body {
 }
 
 .term-badge-sys  { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
-.term-badge-wf   { background: rgba(239, 68, 68, 0.2);   color: #f87171; }
 .term-badge-nk   { background: rgba(59, 130, 246, 0.2);  color: #60a5fa; }
 .term-badge-ind  { background: rgba(16, 185, 129, 0.2);  color: #34d399; }
 

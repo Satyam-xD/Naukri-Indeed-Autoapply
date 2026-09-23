@@ -19,7 +19,8 @@ async function ensureLoggedIn(page, site, creds, log) {
   await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
     log(`⚠ Navigation to job feed failed: ${e.message.split('\n')[0]}`)
   );
-  await page.waitForTimeout(4000);
+  await new Promise((r) => setTimeout(r, 4000));
+  if (page.isClosed()) return false;
 
   const loggedIn = await isNaukriLoggedIn(page);
   if (loggedIn) {
@@ -35,14 +36,17 @@ async function ensureLoggedIn(page, site, creds, log) {
     await page.goto(site.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
       log(`⚠ Navigation to login page failed: ${e.message.split('\n')[0]}`)
     );
-    await page.waitForTimeout(3000);
+    await new Promise((r) => setTimeout(r, 3000));
+    if (page.isClosed()) return false;
     await autoFillNaukri(page, email, password, log);
   }
 
   log('⏳ Waiting for Naukri login to complete (up to 2 min, handles OTP / CAPTCHA)...');
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    await page.waitForTimeout(3000);
+    if (page.isClosed()) return false;
+    await new Promise((r) => setTimeout(r, 3000));
+    if (page.isClosed()) return false;
     const url  = page.url();
     const done = await isNaukriLoggedIn(page);
     const urlConfirmed = /naukri\.com\/(mnjuser|homepage|profile)/i.test(url);
@@ -52,15 +56,17 @@ async function ensureLoggedIn(page, site, creds, log) {
       await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
         log(`⚠ Post-login navigation failed: ${e.message.split('\n')[0]}`)
       );
-      await page.waitForTimeout(3000);
+      await new Promise((r) => setTimeout(r, 3000));
       return true;
     }
   }
 
   log('⚠ Naukri login timed out — proceeding anyway (applications may fail).');
-  await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
-    log(`⚠ Final navigation to job feed failed: ${e.message.split('\n')[0]}`)
-  );
+  if (!page.isClosed()) {
+    await page.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 }).catch((e) =>
+      log(`⚠ Final navigation to job feed failed: ${e.message.split('\n')[0]}`)
+    );
+  }
   return false;
 }
 
@@ -83,13 +89,13 @@ async function autoFillNaukri(page, email, password, log) {
     await page.click(emailSel);
     await page.fill(emailSel, email);
     log(`  ✍ Email filled: ${email}`);
-    await page.waitForTimeout(500);
+    await new Promise((r) => setTimeout(r, 500));
 
     const passSel = 'input[type="password"]';
     let passField = await page.$(passSel);
     if (!passField) {
       const nextBtn = await page.$('button[type="submit"], button:has-text("Continue"), button:has-text("Next")');
-      if (nextBtn) { await nextBtn.click(); await page.waitForTimeout(2000); }
+      if (nextBtn) { await nextBtn.click(); await new Promise((r) => setTimeout(r, 2000)); }
       try { await page.waitForSelector(passSel, { timeout: 8000 }); } catch (_) {}
       passField = await page.$(passSel);
     }
@@ -97,7 +103,7 @@ async function autoFillNaukri(page, email, password, log) {
       await page.click(passSel);
       await page.fill(passSel, password);
       log('  ✍ Password filled');
-      await page.waitForTimeout(600);
+      await new Promise((r) => setTimeout(r, 600));
     }
 
     const submitBtn =

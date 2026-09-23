@@ -74,12 +74,14 @@ async function tryAutoSolveCloudflare(page, log) {
             const tx = box.x + box.width / 2;
             const ty = box.y + box.height / 2;
             await page.mouse.move(tx - 30, ty - 20, { steps: 5 });
-            await page.waitForTimeout(100);
+            await new Promise((r) => setTimeout(r, 100));
+            if (page.isClosed()) return false;
             await page.mouse.move(tx, ty, { steps: 3 });
-            await page.waitForTimeout(150);
+            await new Promise((r) => setTimeout(r, 150));
+            if (page.isClosed()) return false;
             await page.mouse.click(tx, ty);
             log('  ✅ Sent trusted CDP click to Turnstile checkbox');
-            await page.waitForTimeout(2000);
+            await new Promise((r) => setTimeout(r, 2000));
             return true;
           }
         }
@@ -94,12 +96,14 @@ async function tryAutoSolveCloudflare(page, log) {
         const tx = box.x + 28;
         const ty = box.y + Math.min(box.height / 2, 32);
         await page.mouse.move(tx - 25, ty - 15, { steps: 4 });
-        await page.waitForTimeout(120);
+        await new Promise((r) => setTimeout(r, 120));
+        if (page.isClosed()) return false;
         await page.mouse.move(tx, ty, { steps: 3 });
-        await page.waitForTimeout(150);
+        await new Promise((r) => setTimeout(r, 150));
+        if (page.isClosed()) return false;
         await page.mouse.click(tx, ty);
         log('  ✅ Clicked Cloudflare checkbox coordinate');
-        await page.waitForTimeout(2000);
+        await new Promise((r) => setTimeout(r, 2000));
         return true;
       }
     }
@@ -114,31 +118,16 @@ function startClickRelay(mainPage, log, getJob) {
   let tick = 0;
   const id = setInterval(async () => {
     try {
+      if (!mainPage || mainPage.isClosed()) {
+        clearInterval(id);
+        return;
+      }
       tick++;
       if (tick % 6 === 0) {
         await tryAutoSolveCloudflare(mainPage, log).catch(() => {});
       }
 
-      // Check for resume upload input
-      if (tick % 5 === 0) {
-        try {
-          const hasFileInput = await mainPage.evaluate(() => {
-            const fi = document.querySelector('input[type="file"]');
-            return fi && !fi.disabled && (!fi.files || fi.files.length === 0);
-          }).catch(() => false);
 
-          if (hasFileInput) {
-            const job = typeof getJob === 'function' ? getJob() : null;
-            const resume = getBestResume(job || {});
-            const fiLoc = mainPage.locator('input[type="file"]').first();
-            if (await fiLoc.count() > 0) {
-              await fiLoc.setInputFiles(resume.path);
-              log(`  📄 Attached resume: "${resume.filename}" (${resume.label})`);
-              await mainPage.waitForTimeout(1000);
-            }
-          }
-        } catch (_) {}
-      }
 
       const signal = await mainPage.evaluate(() => {
         const s = window.__aaReadyToSubmit;
@@ -217,7 +206,9 @@ function wirePage(page, { script, state, site, live, target, dayState, logApplic
         // Fetch API blocked by CSP
         /Fetch API cannot load/i.test(text) ||
         // Module loading errors from Indeed's own micro-frontend
-        /Unable to load mosaic-provider|assertProviderIsLazy|isLazy/i.test(text)
+        /Unable to load mosaic-provider|assertProviderIsLazy|isLazy/i.test(text) ||
+        // postMessage origin mismatch from embedded widgets / Google sign-in
+        /Failed to execute 'postMessage'|target origin provided/i.test(text)
       ) {
         return;
       }
@@ -229,6 +220,9 @@ function wirePage(page, { script, state, site, live, target, dayState, logApplic
       try {
         const jsonStr = text.slice(text.indexOf('[auto-apply-pause]') + '[auto-apply-pause]'.length).trim();
         const data = JSON.parse(jsonStr);
+        if (data.question) {
+          qaManager.recordQA({ question: data.question, answer: '', status: 'unanswered', source: 'unknown' });
+        }
         process.stdout.write('\x07'); // Terminal beep
         log(`\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         log(`  🚨 [PAUSED] Unknown question: "${data.question.slice(0, 60)}"`);
@@ -266,11 +260,6 @@ function wirePage(page, { script, state, site, live, target, dayState, logApplic
 
     log('  ' + clean.slice(0, 200));
 
-    if (/no Submit button|Submit button is disabled|🚫/.test(clean)) {
-      const snapPath = path.join(__dirname, '..', `blocked-${Date.now()}.png`);
-      page.screenshot({ path: snapPath }).catch(() => {});
-      log(`  📸 Screenshot saved: ${snapPath}`);
-    }
 
     // Capture job when applying begins
     const applyMatch = clean.match(/▶ (?:Applying: |\[\d+\/\d+\] )(.+)/);
@@ -318,6 +307,7 @@ function wirePage(page, { script, state, site, live, target, dayState, logApplic
   });
 
   page.on('load', async () => {
+    if (page.isClosed()) return;
     const currentUrl = page.url();
     if (!site.injectOn(currentUrl)) {
       // Only redirect away if it's a truly external (non-Indeed) domain
@@ -325,16 +315,22 @@ function wirePage(page, { script, state, site, live, target, dayState, logApplic
       if (/^https?:\/\//i.test(currentUrl) && !isIndeedDomain) {
         const fallbackUrl = state.searchUrlFn ? state.searchUrlFn() : site.searches[0];
         log(`⚠ External redirect detected (${currentUrl.slice(0, 60)}...) — returning to search`);
-        await page.goto(fallbackUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
+        if (!page.isClosed()) {
+          await page.goto(fallbackUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {});
+        }
         state.lastActivity = Date.now();
       }
       return;
     }
 
     state.lastActivity = Date.now();
-    await page.evaluate(script).catch((e) =>
-      log(`⚠ [load] Script re-injection failed: ${e.message.split('\n')[0]}`)
-    );
+    if (!page.isClosed()) {
+      await page.evaluate(script).catch((e) => {
+        if (!page.isClosed()) {
+          log(`⚠ [load] Script re-injection failed: ${e.message.split('\n')[0]}`);
+        }
+      });
+    }
   });
 }
 
@@ -377,10 +373,14 @@ async function runSupervisor({
   // search page seamlessly proceeds to the next job card without reloading.
   ctx.on('page', async (newPage) => {
     try {
+      if (newPage === mainPage || newPage.isClosed()) return;
+
       if (newPage.url() === 'about:blank') {
         await newPage.waitForURL((u) => u.toString() !== 'about:blank', { timeout: 12_000 }).catch(() => {});
       }
+      if (newPage.isClosed()) return;
       await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+      if (newPage.isClosed()) return;
       const url = newPage.url();
 
       const isIndeedApplyTab = /smartapply|apply\.indeed|indeed\.com\/beta\/indeedapply|m5\.apply/i.test(url);
@@ -388,22 +388,28 @@ async function runSupervisor({
 
       if (isIndeedApplyTab || isIndeedViewJob) {
         log(`  📑 Indeed apply tab opened (${url.slice(0, 70)}...) — processing in tab...`);
-        await mainPage.evaluate('window.__aaTabInFlight = true').catch(() => {});
+        if (!mainPage.isClosed()) {
+          await mainPage.evaluate('window.__aaTabInFlight = true').catch(() => {});
+        }
 
         wirePage(newPage, { script, state, site, live, target, dayState, logApplication, log });
         const tabRelay = startClickRelay(newPage, log, () => state.pendingJob);
 
         try {
-          await newPage.evaluate(script).catch((e) =>
-            log(`  ⚠ Tab injection note: ${e.message.split('\n')[0]}`)
-          );
+          if (!newPage.isClosed()) {
+            await newPage.evaluate(script).catch((e) => {
+              if (!newPage.isClosed()) {
+                log(`  ⚠ Tab injection note: ${e.message.split('\n')[0]}`);
+              }
+            });
+          }
 
           // Wait until the tab finishes applying or closes or times out (up to 90s)
           const tabStart = Date.now();
           while (!newPage.isClosed() && Date.now() - tabStart < 90_000) {
             const isTabFinished = await newPage.evaluate('!!window.__aaFinished || !window.__aaBusy').catch(() => true);
             if (isTabFinished && Date.now() - tabStart > 4000) break;
-            await newPage.waitForTimeout(1500).catch(() => {});
+            await new Promise((r) => setTimeout(r, 1500));
           }
         } finally {
           tabRelay.stop();
@@ -411,29 +417,49 @@ async function runSupervisor({
             await newPage.close().catch(() => {});
           }
           log(`  📑 Indeed apply tab finished. Returning to search.`);
-          await mainPage.evaluate('window.__aaTabInFlight = false; window.__aaTabCompleted = true').catch(() => {});
+          if (!mainPage.isClosed()) {
+            await mainPage.evaluate('window.__aaTabInFlight = false; window.__aaTabCompleted = true').catch(() => {});
+          }
         }
       } else {
         log(`  🛑 External tab detected (closing): ${url.slice(0, 60)}`);
-        await newPage.close().catch(() => {});
+        if (!newPage.isClosed()) {
+          await newPage.close().catch(() => {});
+        }
       }
     } catch (err) {
-      log(`  ⚠ Tab handler error: ${err.message.split('\n')[0]}`);
-      try { await newPage.close(); } catch (_) {}
-      await mainPage.evaluate('window.__aaTabInFlight = false; window.__aaTabCompleted = true').catch(() => {});
+      if (!newPage.isClosed()) {
+        log(`  ⚠ Tab handler error: ${err.message.split('\n')[0]}`);
+        try { await newPage.close(); } catch (_) {}
+      }
+      if (!mainPage.isClosed()) {
+        await mainPage.evaluate('window.__aaTabInFlight = false; window.__aaTabCompleted = true').catch(() => {});
+      }
     }
   });
 
   const firstUrl = nextSearchUrl();
   log(`Navigating to first search URL: ${firstUrl}`);
   await mainPage.goto(firstUrl, { waitUntil: 'load', timeout: 60_000 });
-  await mainPage.waitForTimeout(4000);
-  await mainPage.evaluate(script).catch((e) => log(`Initial eval error: ${e.message}`));
+  await new Promise((r) => setTimeout(r, 4000));
+  if (!mainPage.isClosed()) {
+    await mainPage.evaluate(script).catch((e) => log(`Initial eval error: ${e.message}`));
+  }
 
   const startTime = Date.now();
 
   while (state.submitted < target && Date.now() - startTime < MAX_RUNTIME_MS) {
-    await mainPage.waitForTimeout(15_000);
+    if (mainPage.isClosed() || (ctx.pages && ctx.pages().length === 0)) {
+      log('Main page or browser window was closed — ending supervisor loop.');
+      break;
+    }
+
+    await new Promise((r) => setTimeout(r, 15_000));
+
+    if (mainPage.isClosed()) {
+      log('Browser window was closed — ending supervisor loop.');
+      break;
+    }
 
     const busy = await isBusy(mainPage);
     const idleMs = Date.now() - state.lastActivity;
@@ -443,8 +469,10 @@ async function runSupervisor({
       log(`Idle for ${(idleMs / 1000).toFixed(0)}s — rotating to next search: ${nextUrl}`);
       state.lastActivity = Date.now();
       await mainPage.goto(nextUrl, { waitUntil: 'load', timeout: 60_000 }).catch(() => {});
-      await mainPage.waitForTimeout(3000);
-      await mainPage.evaluate(script).catch((e) => log(`Rotate eval error: ${e.message}`));
+      await new Promise((r) => setTimeout(r, 3000));
+      if (!mainPage.isClosed()) {
+        await mainPage.evaluate(script).catch((e) => log(`Rotate eval error: ${e.message}`));
+      }
       continue;
     }
 
@@ -454,12 +482,14 @@ async function runSupervisor({
       log(`Page finished all eligible jobs — advancing to next search: ${nextUrl}`);
       state.lastActivity = Date.now();
       await mainPage.goto(nextUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {});
-      await mainPage.waitForTimeout(2000);
-      await mainPage.evaluate(script).catch((e) => log(`Next search eval error: ${e.message}`));
+      await new Promise((r) => setTimeout(r, 2000));
+      if (!mainPage.isClosed()) {
+        await mainPage.evaluate(script).catch((e) => log(`Next search eval error: ${e.message}`));
+      }
       continue;
     }
 
-    if (!busy && site.injectOn(mainPage.url())) {
+    if (!busy && !mainPage.isClosed() && site.injectOn(mainPage.url())) {
       await mainPage.evaluate(script).catch(() => {});
     }
   }

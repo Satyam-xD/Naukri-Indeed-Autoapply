@@ -1,6 +1,6 @@
 /**
  * dashboard/server.js
- * Lightweight local dashboard server & live command center for Wellfound, Naukri & Indeed Auto-Apply.
+ * Lightweight local dashboard server & live command center for Naukri & Indeed Auto-Apply.
  * Run via: npm run dashboard  (or node dashboard/server.js)
  */
 'use strict';
@@ -21,7 +21,6 @@ const { loadResumeConfig, RESUMES_DIR, CONFIG_FILE: RESUMES_CONFIG_FILE } = requ
 
 // Track active child processes spawned from the dashboard
 const activeProcesses = {
-  wellfound: null,
   naukri:    null,
   indeed:    null,
   all:       null,
@@ -83,8 +82,7 @@ function addLog(rawText, platform = 'system', explicitLevel = null) {
 
     // Also echo to node console
     const colorTag = platform === 'indeed' ? '\x1b[32m[indeed]\x1b[0m' :
-                     platform === 'naukri' ? '\x1b[34m[naukri]\x1b[0m' :
-                     platform === 'wellfound' ? '\x1b[31m[wellfound]\x1b[0m' : '\x1b[36m[system]\x1b[0m';
+                     platform === 'naukri' ? '\x1b[34m[naukri]\x1b[0m' : '\x1b[36m[system]\x1b[0m';
     process.stdout.write(`${colorTag} ${line}\n`);
   }
 }
@@ -147,6 +145,7 @@ function getSettingsStructured() {
       maxDelay:         env.MAX_DELAY_SECONDS || '10',
       geminiKey:        env.GEMINI_KEY || '',
       naukriProfileUrl: env.NAUKRI_PROFILE_URL || 'https://www.naukri.com/mnjuser/profile',
+      browserChannel:   env.BROWSER_CHANNEL || 'msedge',
     },
     credentials: {
       googleEmail: env.GOOGLE_EMAIL || '',
@@ -218,6 +217,9 @@ function saveSettingsStructured(settings) {
     '# --- Speed & Delays between applications (seconds) ---',
     `MIN_DELAY_SECONDS=${auto.minDelay || '5'}`,
     `MAX_DELAY_SECONDS=${auto.maxDelay || '10'}`,
+    '',
+    '# --- Browser Configuration ---',
+    `BROWSER_CHANNEL=${auto.browserChannel || existing.BROWSER_CHANNEL || 'msedge'}`,
     '',
   ];
 
@@ -302,17 +304,17 @@ function parseCSVRows(csvPath) {
 }
 
 function getStats() {
-  const wf = readJsonSafe(path.join(ROOT, 'apply-state-wellfound.json'), { count: 0, date: '' });
   const nk = readJsonSafe(path.join(ROOT, 'apply-state-naukri.json'), { count: 0, date: '' });
   const ind = readJsonSafe(path.join(ROOT, 'apply-state-indeed.json'), { count: 0, date: '' });
 
   const apps = parseCSVRows(path.join(ROOT, 'applications.csv'));
   const qaBank = qaManager.getQABank();
   const knownCount = Object.keys(qaBank.answers || {}).length;
-  const unansweredCount = (qaBank.unanswered || []).length;
+  const unansweredCount = Array.isArray(qaBank.unanswered)
+    ? qaBank.unanswered.length
+    : Object.keys(qaBank.unanswered || {}).length;
 
   const runners = {
-    wellfound: !!(activeProcesses.wellfound && !activeProcesses.wellfound.killed),
     naukri:    !!(activeProcesses.naukri && !activeProcesses.naukri.killed),
     indeed:    !!(activeProcesses.indeed && !activeProcesses.indeed.killed),
     all:       !!(activeProcesses.all && !activeProcesses.all.killed),
@@ -320,12 +322,10 @@ function getStats() {
 
   return {
     quota: {
-      wellfound: { count: wf.count || 0, limit: 50, date: wf.date || '' },
       naukri:    { count: nk.count || 0, limit: 50, date: nk.date || '' },
       indeed:    { count: ind.count || 0, limit: 60, date: ind.date || '' },
     },
     platforms: {
-      wellfound: { count: wf.count || 0, cap: 50, date: wf.date || '' },
       naukri:    { count: nk.count || 0, cap: 50, date: nk.date || '' },
       indeed:    { count: ind.count || 0, cap: 60, date: ind.date || '' },
     },
@@ -490,14 +490,15 @@ const server = http.createServer(async (req, res) => {
       if (!question || !question.trim()) {
         return sendJson(res, 400, { error: 'Question is required' });
       }
+      const ansTrimmed = String(answer || '').trim();
       qaManager.recordQA({
         question: question.trim(),
-        answer: String(answer || '').trim(),
-        status: 'known',
+        answer: ansTrimmed,
+        status: ansTrimmed ? 'known' : 'unanswered',
         source: 'user',
       });
       qaManager.saveQABankNow();
-      addLog(`❓ [QA BANK] Saved answer for: "${question.trim()}" -> "${String(answer || '').trim()}"`, 'system', 'success');
+      addLog(`❓ [QA BANK] Saved question: "${question.trim()}" ${ansTrimmed ? `-> "${ansTrimmed}"` : '(pending answer)'}`, 'system', 'success');
       return sendJson(res, 200, { success: true, qaBank: qaManager.getQABank() });
     } catch (err) {
       return sendJson(res, 500, { error: err.message });
@@ -513,11 +514,16 @@ const server = http.createServer(async (req, res) => {
       if (section === 'answers' && bank.answers) {
         delete bank.answers[qKey];
         delete bank.answers[question];
-      } else if (section === 'unanswered' && Array.isArray(bank.unanswered)) {
-        bank.unanswered = bank.unanswered.filter((item) => {
-          const q = typeof item === 'string' ? item : item.question;
-          return q !== question && q.toLowerCase().replace(/[?*:]+$/g, '').trim() !== qKey;
-        });
+      } else if (section === 'unanswered') {
+        if (Array.isArray(bank.unanswered)) {
+          bank.unanswered = bank.unanswered.filter((item) => {
+            const q = typeof item === 'string' ? item : item.question;
+            return q !== question && q.toLowerCase().replace(/[?*:]+$/g, '').trim() !== qKey;
+          });
+        } else if (bank.unanswered && typeof bank.unanswered === 'object') {
+          delete bank.unanswered[qKey];
+          delete bank.unanswered[question];
+        }
       }
       qaManager.saveQABankNow();
       return sendJson(res, 200, { success: true, qaBank: bank });

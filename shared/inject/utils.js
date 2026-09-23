@@ -186,59 +186,109 @@ function coverLetter(company, title) {
 // ── Factual Q&A Bank ───────────────────────────────────────────
 
 const FACTUAL_QA = [
+  // ── Primary skills / tech ────────────────────────────────────────────────
   [/primary (programming )?language|core language|coding language|main language/i,
     'JavaScript, TypeScript, Python'],
   [/technologies|tech stack|skills/i,
     CV.skills || 'JavaScript, TypeScript, React, Node.js, Python'],
   [/company name|current (company|employer)|organi[sz]ation/i,
     CV.company || ''],
+
+  // ── Experience ───────────────────────────────────────────────────────────
   [/years? of (work |professional )?experience|how (long|many years)|total experience/i,
     `I have ${CV.yearsOfExperience || '1 year of experience'}. Hands-on with ${(CV.skills || '').split(',').slice(0, 6).join(', ') || 'modern web development'}.`],
   [/experience with (react|node|javascript|python|frontend|backend|web)/i,
     '1'],
+  [/\byears? of exp|experience.*years?|how many years/i, CV.yearsOfExperience || '1'],
+
+  // ── Notice period (months / weeks / days) — LinkedIn-style ───────────────
+  [/notice.*month|notice.*in month/i,    String(Math.floor((Number(CV.noticePeriodDays) || 0) / 30) || '0')],
+  [/notice.*week|notice.*in week/i,      String(Math.floor((Number(CV.noticePeriodDays) || 0) / 7)  || '0')],
   [/notice period|when can you (start|join)|start date|joining/i,
-    CV.startDate || 'Available to join immediately.'],
-  [/current .{0,15}(ctc|salary|compensation).*in (lpa|lakhs?)|current ctc/i,
-    CV.currentCTC || '0'],
-  [/current .{0,15}(ctc|salary|compensation)/i,
-    CV.currentSalary || '0 LPA'],
-  [/(expected|desired) .{0,15}(ctc|salary|compensation|pay).*in (lpa|lakhs?)|expected ctc/i,
+    CV.startDate || 'Immediate'],
+
+  // ── Salary — current CTC (lakh / monthly / raw) ──────────────────────────
+  [/current.{0,20}(ctc|salary|compensation).*(lpa|lakh)/i,
+    String(CV.currentCTC || '0').replace(/[^0-9.]/g, '') || '0'],
+  [/current.{0,20}(ctc|salary|compensation).*month/i,
+    String(Math.round((Number(String(CV.currentSalary || '0').replace(/[^0-9]/g, '')) || 0) / 12))],
+  [/current.{0,20}(ctc|salary|compensation)/i,
+    CV.currentSalary || '0'],
+
+  // ── Salary — expected / desired CTC (lakh / monthly / raw) ───────────────
+  [/(expected|desired).{0,20}(ctc|salary|compensation|pay).*(lpa|lakh)/i,
     String(CV.expectedCTC || '4').match(/\d+/)?.[0] || '4'],
-  [/(expected|desired) .{0,15}(ctc|salary|compensation|pay)|salary expectation/i,
+  [/(expected|desired).{0,20}(ctc|salary|compensation|pay).*month/i,
+    String(Math.round((Number(String(CV.expectedSalary || '4').replace(/[^0-9]/g, '')) || 400000) / 12))],
+  [/(expected|desired).{0,20}(ctc|salary|compensation|pay)|salary expectation/i,
     CV.expectedSalary || '4-6 LPA'],
-  [/cgpa|gpa|percentage|marks|aggregate/i,
-    '8.2'],
-  [/remote|work from home|wfh/i,
-    'Yes, I am fully set up for remote work and open to hybrid/onsite.'],
-  [/reloc|move to|shift to|work from (our )?office|on-?site/i,
-    'Yes, I am open to relocation across India and remote roles globally.'],
-  [/authorized to work in india|eligible to work in india|legally authorized/i,
-    'Yes'],
-  [/visa|sponsorship|require (visa )?sponsorship/i,
-    'No'],
-  [/where are you (based|located)|current location|city/i,
-    CV.location || 'India'],
+
+  // ── Name variants — LinkedIn-style first / middle / last ─────────────────
+  [/first\s*name/i,    (CV.name || '').split(' ')[0] || CV.name],
+  [/middle\s*name/i,   (CV.name || '').split(' ').slice(1, -1).join(' ') || ''],
+  [/last\s*name|surname/i,
+    (CV.name || '').split(' ').length > 1
+      ? (CV.name || '').split(' ').slice(-1)[0]
+      : (CV.name || '').split(' ')[0]],
+  [/full\s*name|your\s*name|\bname\b/i, CV.name],
+  [/signature|legal name/i, CV.name],
+
+  // ── Contact ───────────────────────────────────────────────────────────────
+  [/phone|mobile|contact number/i, CV.phone],
+  [/e-?mail/i,                     CV.email],
+
+  // ── Location ─────────────────────────────────────────────────────────────
+  [/\bstreet\b|address/i,            CV.street  || '123 Main Street'],
+  [/\bstate\b|province/i,            CV.state   || 'Maharashtra'],
+  [/zip|postal code/i,               CV.zipcode || '400001'],
+  [/\bcountry\b/i,                   CV.country || 'India'],
+  [/\bcity\b|current location|where are you (based|located)/i,
+    (CV.location || 'India').split(',')[0].trim()],
+
+  // ── Education ─────────────────────────────────────────────────────────────
+  [/education|degree|university|college|qualification/i, CV.education || "Bachelor's Degree"],
+  [/bachelor|degree level/i, "Bachelor's"],
+  [/cgpa|gpa|percentage|marks|aggregate/i, '8.2'],
+
+  // ── Diversity / EEO questions — LinkedIn-style ───────────────────────────
+  [/disability|handicapped/i,        CV.disabilityStatus   || 'No'],
+  [/veteran|protected\s*veteran/i,   CV.veteranStatus      || 'No'],
+  [/gender|sex(?!ual)/i,             CV.gender             || 'Male'],
+  [/ethnicity|race/i,                CV.ethnicity          || 'Decline'],
+  [/citizenship|employment eligibility|authorized to work/i,
+    CV.usCitizenship || 'Yes'],
+
+  // ── Proficiency / confidence ──────────────────────────────────────────────
+  [/scale of 1.{0,4}10|confidence level|rate yourself|on a scale/i,
+    CV.confidenceLevel || '7'],
+  [/proficiency/i, 'Professional'],
+
+  // ── Online presence ───────────────────────────────────────────────────────
   [/linkedin/i,          CV.linkedin],
   [/github/i,            CV.github],
   [/portfolio|personal website/i, CV.portfolio],
-  [/link/i,              CV.links],
-  [/phone|contact number|mobile/i, CV.phone],
-  [/e-?mail/i,           CV.email],
-  [/your name|full name|\bname\b/i, CV.name],
-  [/education|degree|university|college|qualification/i, CV.education || "Bachelor's Degree"],
-  [/bachelor|degree level/i, "Bachelor's"],
+  [/website|blog|link/i, CV.portfolio || CV.github],
+  [/headline/i,          CV.headline  || CV.currentRole],
+  [/summary/i,           CV.summary   || ''],
+  [/recent\s*employer|current\s*employer/i, CV.company || 'Not Applicable'],
+
+  // ── Work preferences ──────────────────────────────────────────────────────
+  [/remote|work from home|wfh/i,
+    'Yes, I am fully set up for remote work and open to hybrid/onsite.'],
+  [/reloc|move to|shift to|work from (our )?office|on-?site|willing to work.*office/i,
+    'Yes, I am open to relocation across India and remote roles globally.'],
+  [/visa|sponsorship|require (visa )?sponsorship/i, 'No'],
+  [/authorized|eligible to work|legally authorized/i, 'Yes'],
+  [/immediate joiner|available immediately/i, 'Yes'],
+  [/laptop|own (device|computer|system)|reliable internet/i, 'Yes'],
+  [/languages? (known|spoken|proficiency)/i, 'English, Hindi'],
+  [/willing to work (from )?office|in-?office/i, 'Yes'],
+
+  // ── Misc ─────────────────────────────────────────────────────────────────
   [/are you a fresher|fresher candidate/i,
     'Yes, I am a fresher with hands-on full-stack development experience.'],
-  [/laptop|own (device|computer|system)|reliable internet/i,
-    'Yes'],
-  [/languages? (known|spoken|proficiency)/i,
-    'English, Hindi'],
-  [/immediate joiner|available immediately/i,
-    'Yes'],
-  [/willing to work (from )?office|in-?office/i,
-    'Yes'],
-  [/gender/i, CV.gender || 'Male'],
-  [/date of birth|dob|birthday/i, CV.dob],
+  [/date of birth|dob|birthday/i, CV.dob || ''],
+  [/hear.{0,20}(this|about)|come across.{0,20}(job|position)/i, CV.linkedin || CV.github],
 ];
 
 const GENERIC_ANSWER = (() => {
@@ -361,6 +411,7 @@ function promptUserForAnswer(questionText, defaultVal = '') {
 
   try {
     console.log(`[auto-apply] [auto-apply-pause] ${JSON.stringify({ question: questionText })}`);
+    emitQARecord({ question: questionText, answer: '', status: 'unanswered', source: 'unknown' });
   } catch (_) {}
 
   return new Promise((resolve) => {

@@ -1,6 +1,5 @@
 node_modules
 .env
-.wellfound-chrome-profile
 .indeed-chrome-profile
 .naukri-chrome-profile
 .naukri-apply-profile

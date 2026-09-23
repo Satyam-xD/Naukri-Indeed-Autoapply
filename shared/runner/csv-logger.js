@@ -53,7 +53,7 @@ function extractExp(text = '') {
 /**
  * logApplication — appends one row to applications.csv.
  *
- * @param {string} siteName  e.g. 'wellfound' | 'naukri' | 'indeed'
+ * @param {string} siteName  e.g. 'naukri' | 'indeed'
  * @param {object} job       { title, company, expRequired, salary, skills, link, jd }
  */
 function logApplication(siteName, job) {

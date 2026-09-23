@@ -31,10 +31,6 @@ const el = {
   statResumesCount: document.getElementById('stat-resumes-count'),
 
   // Platform Cards
-  wfFraction: document.getElementById('wf-fraction'),
-  wfBar: document.getElementById('wf-bar'),
-  statusTagWf: document.getElementById('status-tag-wf'),
-
   nkFraction: document.getElementById('nk-fraction'),
   nkBar: document.getElementById('nk-bar'),
   statusTagNk: document.getElementById('status-tag-nk'),
@@ -233,8 +229,7 @@ function createLogLineElement(entry) {
   const div = document.createElement('div');
   div.className = `terminal-line ${entry.level || 'info'}`;
 
-  const badgeClass = entry.platform === 'wellfound' ? 'term-badge-wf' :
-                     entry.platform === 'naukri' ? 'term-badge-nk' :
+  const badgeClass = entry.platform === 'naukri' ? 'term-badge-nk' :
                      entry.platform === 'indeed' ? 'term-badge-ind' : 'term-badge-sys';
 
   div.innerHTML = `
@@ -427,15 +422,6 @@ function renderStats() {
   if (!state.stats) return;
   const { quota = {}, totalApplications = 0, qaBank = {}, runners = {} } = state.stats;
 
-  // Wellfound
-  if (quota.wellfound) {
-    const { count = 0, limit = 50 } = quota.wellfound;
-    const pct = Math.min(100, Math.round((count / (limit || 50)) * 100));
-    el.wfFraction.textContent = `${count} / ${limit}`;
-    el.wfBar.style.width = `${pct}%`;
-  }
-  updateRunnerStatusTag(el.statusTagWf, runners.wellfound);
-
   // Naukri
   if (quota.naukri) {
     const { count = 0, limit = 50 } = quota.naukri;
@@ -463,7 +449,6 @@ function renderStats() {
 
   // Terminal Runner Summary
   const runningList = [];
-  if (runners.wellfound) runningList.push('Wellfound');
   if (runners.naukri) runningList.push('Naukri');
   if (runners.indeed) runningList.push('Indeed');
   if (runners.all) runningList.push('All');
@@ -589,17 +574,26 @@ window.saveAllSettings = async function(event) {
 // ── QA BANK CONTROLLER ───────────────────────────────────────
 function renderQaBank() {
   if (!state.qaBank) return;
-  const { answers = {}, unanswered = [] } = state.qaBank;
+  const { answers = {}, unanswered = {} } = state.qaBank;
 
-  const answerEntries = Object.entries(answers).map(([q, a]) => ({ question: q, answer: a, status: 'saved' }));
-  const unansweredEntries = unanswered.map(item => {
-    if (typeof item === 'string') return { question: item, answer: '', status: 'unanswered' };
-    return { question: item.question, answer: '', status: 'unanswered', ...item };
-  });
+  const answerEntries = Object.entries(answers || {}).map(([q, a]) => ({ question: q, answer: String(a || ''), status: 'saved' }));
+  let unansweredEntries = [];
+  if (Array.isArray(unanswered)) {
+    unansweredEntries = unanswered.map(item => {
+      if (typeof item === 'string') return { question: item, answer: '', status: 'unanswered' };
+      return { question: item?.question || '', answer: item?.answer || '', status: 'unanswered', ...item };
+    }).filter(i => i.question);
+  } else if (unanswered && typeof unanswered === 'object') {
+    unansweredEntries = Object.entries(unanswered).map(([q, a]) => ({
+      question: q,
+      answer: String(a || '').replace('[NEEDS_ANSWER]', '').trim(),
+      status: 'unanswered'
+    }));
+  }
 
-  el.qaCountAll.textContent = answerEntries.length + unansweredEntries.length;
-  el.qaCountAnswers.textContent = answerEntries.length;
-  el.qaCountUnanswered.textContent = unansweredEntries.length;
+  if (el.qaCountAll) el.qaCountAll.textContent = answerEntries.length + unansweredEntries.length;
+  if (el.qaCountAnswers) el.qaCountAnswers.textContent = answerEntries.length;
+  if (el.qaCountUnanswered) el.qaCountUnanswered.textContent = unansweredEntries.length;
 
   let combined = [];
   if (state.activeQaFilter === 'all') {
@@ -611,7 +605,7 @@ function renderQaBank() {
   }
 
   // Filter search
-  if (state.qaSearch.trim()) {
+  if (state.qaSearch && state.qaSearch.trim()) {
     const qLower = state.qaSearch.toLowerCase();
     combined = combined.filter(item =>
       item.question.toLowerCase().includes(qLower) ||
@@ -648,11 +642,21 @@ function renderQaBank() {
 
     const tdAction = document.createElement('td');
     tdAction.style.textAlign = 'right';
+    tdAction.style.whiteSpace = 'nowrap';
+
     const editBtn = document.createElement('button');
     editBtn.className = 'btn btn-sm btn-ghost';
     editBtn.textContent = item.answer ? 'Edit' : 'Answer';
     editBtn.onclick = () => openEditQa(item.question, item.answer || '');
     tdAction.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-sm btn-ghost';
+    delBtn.style.color = 'var(--accent-red, #f87171)';
+    delBtn.style.marginLeft = '6px';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = () => deleteQaItem(item.question, item.status === 'saved' ? 'answers' : 'unanswered');
+    tdAction.appendChild(delBtn);
 
     tr.appendChild(tdQ);
     tr.appendChild(tdA);
@@ -690,8 +694,7 @@ function renderApplications() {
   filtered.forEach(app => {
     const tr = document.createElement('tr');
 
-    const badgeClass = (app.site || '').toLowerCase() === 'wellfound' ? 'wf-badge' :
-                       (app.site || '').toLowerCase() === 'naukri' ? 'nk-badge' : 'ind-badge';
+    const badgeClass = (app.site || '').toLowerCase() === 'naukri' ? 'nk-badge' : 'ind-badge';
 
     tr.innerHTML = `
       <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">${escapeHtml(app.date || '')}</td>
@@ -816,8 +819,8 @@ window.saveModalQa = async function() {
   const question = el.modalQuestionInput.value.trim();
   const answer = el.modalAnswerInput.value.trim();
 
-  if (!question || !answer) {
-    alert('Please enter both question keywords and your answer.');
+  if (!question) {
+    alert('Please enter question keywords.');
     return;
   }
 
@@ -830,14 +833,46 @@ window.saveModalQa = async function() {
     const data = await res.json();
     if (data.success) {
       closeQaModal();
-      showToast('Saved answer to QA Bank!');
-      await fetchQaBank();
+      showToast(answer ? 'Saved answer to QA Bank!' : 'Added question to QA Bank (pending answer)');
+      if (data.qaBank) {
+        state.qaBank = data.qaBank;
+        renderQaBank();
+      } else {
+        await fetchQaBank();
+      }
       await fetchStats();
     } else {
       alert(`Could not save: ${data.error || 'Unknown error'}`);
     }
   } catch (err) {
     alert(`Error: ${err.message}`);
+  }
+};
+
+window.deleteQaItem = async function(question, section) {
+  if (!confirm(`Delete "${question}" from QA Bank?`)) return;
+
+  try {
+    const res = await fetch('/api/qa-bank/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, section })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Deleted "${question}" from QA Bank`);
+      if (data.qaBank) {
+        state.qaBank = data.qaBank;
+        renderQaBank();
+      } else {
+        await fetchQaBank();
+      }
+      await fetchStats();
+    } else {
+      alert(`Could not delete: ${data.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    alert(`Error deleting: ${err.message}`);
   }
 };
 

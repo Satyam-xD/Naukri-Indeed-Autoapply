@@ -1,19 +1,16 @@
 {
-  "name": "wellfound-auto-apply",
+  "name": "auto-apply-command-center",
   "version": "2.0.0",
-  "description": "Automated Wellfound & Naukri job applier using Playwright. Modular wellfound/ + naukri/ + shared/ architecture.",
+  "description": "Automated Naukri & Indeed job applier using Playwright. Modular naukri/ + indeed/ + shared/ architecture.",
   "main": "index.js",
   "scripts": {
     "start":           "node index.js all --live",
     "dry":             "node index.js all",
-    "wellfound":       "node index.js wellfound --live --no-watch",
     "naukri":          "node index.js naukri --live --no-watch",
     "indeed":          "node index.js indeed --live --no-watch",
-    "dry:wellfound":   "node index.js wellfound --no-watch",
     "dry:naukri":      "node index.js naukri --no-watch",
     "dry:indeed":      "node index.js indeed --no-watch",
     "login":           "node index.js all login",
-    "login:wellfound": "node index.js wellfound login",
     "login:naukri":    "node index.js naukri login",
     "login:indeed":    "node index.js indeed login",
     "offscreen":       "node index.js all --live --offscreen",
@@ -24,13 +21,11 @@
       "index.js",
       ".env",
       "shared",
-      "wellfound",
       "naukri",
       "indeed"
     ],
     "ext": "js,json,env",
     "ignore": [
-      ".wellfound-chrome-profile/**",
       ".naukri-chrome-profile/**",
       ".indeed-chrome-profile/**",
       ".*-chrome-profile/**",
@@ -44,7 +39,8 @@
     ]
   },
   "keywords": [
-    "wellfound",
+    "naukri",
+    "indeed",
     "playwright",
     "automation",
     "job-apply"

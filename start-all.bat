@@ -1,9 +1,9 @@
 @echo off
-title Multi-Platform Job Auto-Applier (Wellfound + Naukri + Indeed)
+title Multi-Platform Job Auto-Applier (Naukri + Indeed)
 cd /d "%~dp0"
 
 echo ========================================================
-echo  Launching 3 Platforms: Wellfound + Naukri + Indeed
+echo  Launching 2 Platforms: Naukri + Indeed
 echo ========================================================
 echo.
 

@@ -204,15 +204,15 @@ async function applyDirectOnCard(job) {
 async function fillNaukriQuestionnaire(container) {
   let actionClicked = false;
 
-  // ── 0. Checkboxes: terms / consent / agree ──────────────────────
+  // ── 0. Checkboxes — LinkedIn-style: always check ALL unchecked boxes
+  //    Skip only explicit opt-out / unsubscribe boxes
   const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')].filter(visible);
   for (const cb of checkboxes) {
+    if (cb.checked) continue;
     const lbl = labelTextOf(cb).toLowerCase();
-    // Auto-check consent/terms/agreement boxes
-    if (/terms|consent|agree|privacy|accept|authorize|acknowledge/i.test(lbl) && !cb.checked) {
-      cb.click();
-      await sleep(150);
-    }
+    if (/unsubscribe|opt.out|do not (contact|email|send)/i.test(lbl)) continue;
+    cb.click();
+    await sleep(150);
   }
 
   // ── 1. Standard <input type="radio"> groups ───────────────
@@ -287,7 +287,7 @@ async function fillNaukriQuestionnaire(container) {
     if (pick && !alreadySelected) { pick.click(); await sleep(200); }
   }
 
-  // ── 3. Text / Number inputs (Item 6 — always fill key fields) ────
+  // ── 3. Text / Number inputs ─────────────────────────────────────────────────────────────
   const inputs = [...container.querySelectorAll('input[type="text"], input[type="number"], textarea')].filter(visible);
   for (const inp of inputs) {
     const label = labelTextOf(inp).toLowerCase();
@@ -297,23 +297,127 @@ async function fillNaukriQuestionnaire(container) {
     const bankVal = typeof findQABankAnswer === 'function' ? findQABankAnswer(CONFIG.QA_BANK, label) : null;
     if (bankVal !== null && bankVal !== undefined) {
       val = bankVal;
-    } else if (/current\s*ctc|current\s*salary/i.test(label))        val = CV.currentCTC  || '0';
-    else if (/expected\s*ctc|expected\s*salary/i.test(label)) val = CV.expectedCTC || '4';
-    else if (/\byears?\b.*exp|\bexp\b.*\byears?\b|\btotal\s*exp/i.test(label)) val = '0';
-    else if (/notice\s*period/i.test(label))                  val = 'Immediate';
-    else if (/location|city/i.test(label))                    val = CV.location?.split(',')[0]?.trim() || 'India';
-    else if (inp.value && inp.value.trim() !== '')             continue; // skip other prefilled fields
-    else                                                       val = await answerQuestion(label);
+    // ── Name split (LinkedIn-style) ────────────────────────────────────────────
+    } else if (/first\s*name/i.test(label)) {
+      val = (CV.name || '').split(' ')[0] || CV.name;
+    } else if (/middle\s*name/i.test(label)) {
+      const parts = (CV.name || '').split(' ');
+      val = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+    } else if (/last\s*name|surname/i.test(label)) {
+      const parts = (CV.name || '').split(' ');
+      val = parts.length > 1 ? parts[parts.length - 1] : (CV.name || '');
+    } else if (/full\s*name|\bname\b|signature|legal name/i.test(label)) {
+      val = CV.name;
+    // ── Contact ─────────────────────────────────────────────────────────────────
+    } else if (/e-?mail/i.test(label)) {
+      val = CV.email;
+    } else if (/phone|mobile/i.test(label)) {
+      val = CV.phone;
+    // ── Location ─────────────────────────────────────────────────────────────────
+    } else if (/\bcity\b|location/i.test(label)) {
+      val = (CV.location || 'India').split(',')[0].trim();
+    } else if (/\bstreet\b|address/i.test(label)) {
+      val = CV.street || '123 Main Street';
+    } else if (/\bstate\b|province/i.test(label)) {
+      val = CV.state || 'Maharashtra';
+    } else if (/zip|postal/i.test(label)) {
+      val = CV.zipcode || '400001';
+    } else if (/\bcountry\b/i.test(label)) {
+      val = CV.country || 'India';
+    // ── Salary (LinkedIn-style: current / expected, lakh / monthly / raw) ────────
+    } else if (/current.{0,20}(ctc|salary|compensation).*(lpa|lakh)/i.test(label)) {
+      val = String(CV.currentCTC || '0').replace(/[^0-9.]/g, '') || '0';
+    } else if (/current.{0,20}(ctc|salary|compensation).*month/i.test(label)) {
+      val = String(Math.round((Number(String(CV.currentSalary || '0').replace(/[^0-9]/g, '')) || 0) / 12));
+    } else if (/current\s*ctc|current\s*salary/i.test(label)) {
+      val = CV.currentCTC || '0';
+    } else if (/(expected|desired).{0,20}(ctc|salary|compensation|pay).*(lpa|lakh)/i.test(label)) {
+      val = String(CV.expectedCTC || '4').match(/\d+/)?.[0] || '4';
+    } else if (/(expected|desired).{0,20}(ctc|salary|compensation|pay).*month/i.test(label)) {
+      val = String(Math.round((Number(String(CV.expectedSalary || '4').replace(/[^0-9]/g, '')) || 400000) / 12));
+    } else if (/expected\s*ctc|expected\s*salary/i.test(label)) {
+      val = CV.expectedCTC || '4';
+    // ── Notice period (months / weeks / days) — LinkedIn-style ───────────────
+    } else if (/notice.*month|notice.*in month/i.test(label)) {
+      val = String(Math.floor((Number(CV.noticePeriodDays) || 0) / 30) || '0');
+    } else if (/notice.*week|notice.*in week/i.test(label)) {
+      val = String(Math.floor((Number(CV.noticePeriodDays) || 0) / 7) || '0');
+    } else if (/notice\s*period/i.test(label)) {
+      val = 'Immediate';
+    // ── Experience ─────────────────────────────────────────────────────────────────
+    } else if (/\byears?\b.*exp|\bexp\b.*\byears?\b|\btotal\s*exp/i.test(label)) {
+      val = CV.yearsOfExperience || '0';
+    // ── Diversity / EEO (LinkedIn-style) ───────────────────────────────────────
+    } else if (/disability|handicapped/i.test(label)) {
+      val = CV.disabilityStatus || 'No';
+    } else if (/veteran|protected.*veteran/i.test(label)) {
+      val = CV.veteranStatus || 'No';
+    } else if (/gender|sex(?!ual)/i.test(label)) {
+      val = CV.gender || 'Male';
+    } else if (/ethnicity|race/i.test(label)) {
+      val = CV.ethnicity || 'Decline';
+    } else if (/citizenship|employment eligibility/i.test(label)) {
+      val = CV.usCitizenship || 'Yes';
+    // ── Online presence / misc (LinkedIn-style) ───────────────────────────────
+    } else if (/linkedin/i.test(label)) {
+      val = CV.linkedin || '';
+    } else if (/github/i.test(label)) {
+      val = CV.github || '';
+    } else if (/portfolio|personal website/i.test(label)) {
+      val = CV.portfolio || CV.github || '';
+    } else if (/headline/i.test(label)) {
+      val = CV.headline || CV.currentRole || '';
+    } else if (/recent\s*employer/i.test(label)) {
+      val = CV.company || 'Not Applicable';
+    } else if (/scale of 1.{0,4}10|confidence level|rate yourself/i.test(label)) {
+      val = CV.confidenceLevel || '7';
+    } else if (/cgpa|gpa|percentage|marks/i.test(label)) {
+      val = '8.2';
+    } else if (inp.value && inp.value.trim() !== '') {
+      continue; // skip other prefilled fields
+    } else {
+      val = await answerQuestion(label);
+    }
 
-    if (val !== null && val !== '') { setValue(inp, String(val)); await sleep(200); }
+    if (val !== null && val !== '') {
+      setValue(inp, String(val));
+      // LinkedIn-style: city/location fields need ArrowDown+Enter to dismiss autocomplete
+      if (/\bcity\b|location/i.test(label)) {
+        await sleep(500);
+        inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        await sleep(300);
+        inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      }
+      await sleep(200);
+    }
   }
 
-  // ── 4. Select dropdowns (Item 2 — Gemini-powered) ────────
+  // ── 3b. Textarea inputs (LinkedIn-style: summary → CV.summary, cover → coverLetter) ──
+  const textareas = [...container.querySelectorAll('textarea')].filter(visible);
+  for (const ta of textareas) {
+    if (ta.value && ta.value.trim().length > 0) continue;
+    const taLabel = labelTextOf(ta);
+    let taVal = '';
+    if (/\bsummary\b/i.test(taLabel)) {
+      taVal = CV.summary || await answerQuestion(taLabel);
+    } else if (/cover\s*letter|message|additional|why/i.test(taLabel)) {
+      taVal = typeof coverLetter === 'function' ? coverLetter(CV.company || '', CV.currentRole || '') : '';
+    } else {
+      taVal = await answerQuestion(taLabel);
+    }
+    if (taVal) { setValue(ta, taVal); await sleep(200); }
+  }
+
+  // ── 4. Select dropdowns (LinkedIn-style with fuzzy fallback) ───────────────────
   const selects = [...container.querySelectorAll('select')].filter(visible);
   for (const sel of selects) {
     // Skip if already has a meaningful selection
     if (sel.value && sel.value !== '0' && sel.selectedIndex > 0) continue;
     const label = labelTextOf(sel).toLowerCase();
+
+    // Skip phone country code — LinkedIn bot explicitly skips this dropdown
+    if (/phone country code/i.test(label)) continue;
+
     const options = [...sel.options]
       .map((o, i) => ({ i, text: o.text.trim(), val: o.value }))
       .filter((o) => o.text && o.val !== '' && o.val !== '0');
@@ -329,20 +433,41 @@ async function fillNaukriQuestionnaire(container) {
       opt = options.find((o) => o.text.toLowerCase().includes(norm) || norm.includes(o.text.toLowerCase().trim()));
     }
 
-    // Rule-based for common fields
+    // Rule-based for common fields (LinkedIn-style)
     if (!opt) {
       if (/notice/i.test(label)) {
         opt = options.find((o) => /immediate|0\s*days?|15\s*days?/i.test(o.text));
       } else if (/experience|exp/i.test(label)) {
         opt = options.find((o) => /^0|^less\s*than\s*1|fresher|0[-–]1/i.test(o.text));
-      } else if (/ctc|salary/i.test(label)) {
+      } else if (/current.{0,20}(ctc|salary)|expected.{0,20}(ctc|salary)/i.test(label)) {
         opt = options.find((o) => /not\s*disclosed|0|negotiable/i.test(o.text)) || options[0];
       } else if (/gender/i.test(label)) {
-        opt = options.find((o) => /^male$/i.test(o.text));
+        const g = (CV.gender || 'Male').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(g));
+      } else if (/disability|handicapped/i.test(label)) {
+        const d = (CV.disabilityStatus || 'No').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(d));
+      } else if (/veteran/i.test(label)) {
+        const v = (CV.veteranStatus || 'No').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(v));
+      } else if (/ethnicity|race/i.test(label)) {
+        const e = (CV.ethnicity || 'Decline').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(e.slice(0, 6)));
+      } else if (/proficiency/i.test(label)) {
+        opt = options.find((o) => /professional/i.test(o.text));
+        if (!opt) opt = options.find((o) => /intermediate|full/i.test(o.text));
+      } else if (/citizenship/i.test(label)) {
+        opt = options.find((o) => /yes|authorized|citizen/i.test(o.text));
+      } else if (/country/i.test(label)) {
+        const c = (CV.country || 'India').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(c));
+      } else if (/state/i.test(label)) {
+        const s = (CV.state || 'Maharashtra').toLowerCase();
+        opt = options.find((o) => o.text.toLowerCase().includes(s));
       }
     }
 
-    // Gemini fallback for unknown selects (Item 2)
+    // LinkedIn-style fuzzy phrase fallback via Gemini
     if (!opt && options.length > 1 && CONFIG.geminiKey) {
       const optStr = options.slice(0, 12).map((o) => `"${o.text}"`).join(', ');
       const answer = await answerQuestion(
@@ -368,7 +493,14 @@ async function fillNaukriQuestionnaire(container) {
     }
   }
 
-  // ── 5. Submit / Next / Continue button ────────────────────
+  // ── 5. Date picker — LinkedIn-style: click today's date if present
+  const todayBtn = container.querySelector('button[aria-label*="This is today"], button[aria-label*="today" i][class*="calendar" i], td[aria-label*="today" i] button');
+  if (todayBtn && visible(todayBtn)) {
+    todayBtn.click();
+    await sleep(300);
+  }
+
+  // ── 6. Submit / Next / Continue button ────────────────────
   await sleep(300);
   const actionBtn = [...container.querySelectorAll('button, [role="button"], input[type="submit"], input[type="button"], a.btn')]
     .filter(visible)
@@ -378,7 +510,7 @@ async function fillNaukriQuestionnaire(container) {
     actionBtn.scrollIntoView({ block: 'center' });
     await sleep(300);
     actionBtn.click();
-    log(`  🖱 Clicked: "${actionBtn.textContent.trim().slice(0, 30)}"`);
+    log(`  🖖 Clicked: "${actionBtn.textContent.trim().slice(0, 30)}"`);
     await sleep(2000);
     actionClicked = true;
   }

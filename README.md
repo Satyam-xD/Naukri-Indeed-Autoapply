@@ -1,10 +1,9 @@
 # 🚀 Auto-Apply Command Center (v2.5)
 
-> Autonomous, intelligent multi-platform job application system for **Wellfound**, **Naukri**, and **Indeed** built with **Playwright**, **Stealth CDP Automation**, **Local AI / Gemini**, a **Dynamic Q&A Knowledge Bank**, and a **Real-Time Web Dashboard**.
+> Autonomous, intelligent multi-platform job application system for **Naukri** and **Indeed** built with **Playwright**, **Stealth CDP Automation**, **Local AI / Gemini**, a **Dynamic Q&A Knowledge Bank**, and a **Real-Time Web Dashboard**.
 
-[![Repository](https://img.shields.io/badge/GitHub-Satyam--xD%2FWellfound--Apply-blue?style=flat&logo=github)](https://github.com/Satyam-xD/Wellfound-Apply)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green?style=flat&logo=node.js)](https://nodejs.org)
-[![Platforms](https://img.shields.io/badge/Platforms-Wellfound%20%7C%20Naukri%20%7C%20Indeed-success?style=flat)](https://wellfound.com)
+[![Platforms](https://img.shields.io/badge/Platforms-Naukri%20%7C%20Indeed-success?style=flat)](https://naukri.com)
 [![Dashboard](https://img.shields.io/badge/Dashboard-localhost%3A3456-6366f1?style=flat)](http://localhost:3456)
 [![License: ISC](https://img.shields.io/badge/License-ISC-purple.svg)](https://opensource.org/licenses/ISC)
 
@@ -32,7 +31,7 @@
 
 ## 🌟 Overview
 
-**Auto-Apply Command Center** automates the entire software engineering job application workflow across the 3 largest job platforms simultaneously:
+**Auto-Apply Command Center** automates the entire software engineering job application workflow across major job platforms simultaneously:
 
 1. **Launches stealth Chrome sessions** reusing your existing logins with anti-bot automation flags stripped.
 2. **Filters listings intelligently** by candidate keywords, experience criteria, and senior/lead title blocklists.
@@ -40,7 +39,7 @@
 4. **Fills forms with 100% accuracy** using a persistent [qa-bank.json](qa-bank.json) database — pausing and alerting you with an in-page popup if an unknown question appears.
 5. **Automatically solves Cloudflare Turnstile bot challenges** using trusted CDP hardware mouse clicks.
 6. **Streams live execution logs in real time** to a local web dashboard on port `3456`.
-7. **Logs every application** to `applications.csv` while enforcing strict daily safety limits (Wellfound: 50/day, Naukri: 50/day, Indeed: 60/day).
+7. **Logs every application** to `applications.csv` while enforcing strict daily safety limits (Naukri: 50/day, Indeed: 60/day).
 
 ---
 
@@ -48,7 +47,7 @@
 
 - 🖥️ **All-in-One Local Web Dashboard**:
   - Live execution feed with real-time Server-Sent Events (SSE).
-  - One-click launch (`Dry Run` or `Live`) for Wellfound, Naukri, or Indeed.
+  - One-click launch (`Dry Run` or `Live`) for Naukri or Indeed.
   - Complete **Profile & Settings** editor that updates `.env` directly from the browser.
   - Live **Q&A Bank editor** and **Applications CSV explorer** (88+ applications loaded).
 
@@ -61,14 +60,14 @@
     - `fullstack.pdf` → React, Next.js, Frontend, MERN, Full Stack
     - `backend.pdf` → Python, Go, Node.js, FastAPI, SQL, Microservices
     - `ai_ml.pdf` → AI, GenAI, LLM, RAG, LangChain, Machine Learning
-  - Seamless file upload attachment relay across all 3 platforms.
+  - Seamless file upload attachment relay across both platforms.
 
 - 🛡️ **Cloudflare Turnstile Auto-Solver & Anti-Bot Protection**:
   - Automatically detects Turnstile iframes on Indeed and dispatches trusted CDP hardware clicks.
   - Strips `--enable-automation` and automation extensions to maintain `navigator.webdriver = false`.
 
 - ⚡ **Multi-Platform Parallel Execution**:
-  - Run all 3 platforms in parallel with human-paced randomized delays (60–150s) to protect your accounts.
+  - Run both platforms in parallel with human-paced randomized delays (60–150s) to protect your accounts.
 
 ---
 
@@ -85,7 +84,7 @@ Open your browser to: 👉 **[http://localhost:3456](http://localhost:3456)**
 
 ### Dashboard Tabs:
 1. **📊 Overview & Controls**: Daily quota progress bars, master launcher (`Start All Live`, `Dry Run All`, `Stop All`), quick metrics, and embedded mini-terminal.
-2. **🖥️ Live Terminal**: Real-time streaming console logs with auto-scroll, copy, clear, and platform filters (`Wellfound`, `Naukri`, `Indeed`, `Pauses`, `Errors`).
+2. **🖥️ Live Terminal**: Real-time streaming console logs with auto-scroll, copy, clear, and platform filters (`Naukri`, `Indeed`, `Pauses`, `Errors`).
 3. **⚙️ Profile & Settings**: Full candidate profile editor (identity, contact, experience, 5 resume highlights, application defaults, speed delays, API keys) saved directly to `.env`.
 4. **❓ Q&A Bank**: Live searchable knowledge bank table with instant answer modal.
 5. **📄 Applications Log**: Real-time table explorer for `applications.csv` with site dropdown and keyword search.
@@ -150,10 +149,6 @@ Configure keywords in [`resumes/config.json`](resumes/config.json). The bot scor
 │   └── inject/
 │       └── utils.js             # In-page DOM helpers, countdowns & Q&A matcher
 │
-├── wellfound/                   # 📁 Wellfound (AngelList) Applier
-│   ├── runner/supervisor.js     # Wellfound watcher & CDP click relay
-│   └── inject/apply.js          # Wellfound form filler & tailored notes
-│
 ├── naukri/                      # 📁 Naukri FastApply Applier
 │   ├── runner/supervisor.js     # Naukri watcher & chatbot answerer
 │   └── inject/apply.js          # Naukri questionnaire filler & submitter
@@ -194,11 +189,10 @@ copy .env.example .env
 Log in once to save your session cookies (never enter passwords during active runs):
 
 ```powershell
-# Log in to all 3 platforms sequentially:
+# Log in to both platforms sequentially:
 npm run login
 
 # Or individually:
-npm run login:wellfound
 npm run login:naukri
 npm run login:indeed
 ```
@@ -213,16 +207,15 @@ Open **[http://localhost:3456](http://localhost:3456)** and click **"Start All L
 
 #### Option B: Terminal CLI
 ```powershell
-# Run all 3 platforms live in parallel
+# Run both platforms live in parallel
 npm start
 
-# Run all 3 platforms in test Dry Run mode (no submissions)
+# Run both platforms in test Dry Run mode (no submissions)
 npm run dry
 
 # Run single platforms live:
 npm run indeed
 npm run naukri
-npm run wellfound
 ```
 
 ---
@@ -232,8 +225,8 @@ npm run wellfound
 | Command | NPM Script | Description |
 |---|---|---|
 | `node dashboard/server.js` | `npm run dashboard` | **Command Center**: Launches Web Dashboard at `http://localhost:3456` |
-| `node index.js all --live` | `npm start` | **All Platforms Live**: Runs Wellfound, Naukri, and Indeed in parallel |
-| `node index.js all` | `npm run dry` | **All Platforms Dry Run**: Tests all 3 platforms without submitting |
+| `node index.js all --live` | `npm start` | **All Platforms Live**: Runs Naukri and Indeed in parallel |
+| `node index.js all` | `npm run dry` | **All Platforms Dry Run**: Tests both platforms without submitting |
 | `node index.js all login` | `npm run login` | Sequential one-time login for all platforms |
 | `node index.js indeed --live` | `npm run indeed` | **Indeed Live**: Runs auto-applier with Turnstile auto-solver |
 | `node index.js indeed` | `npm run dry:indeed` | **Indeed Dry Run**: Tests Indeed without submitting |
@@ -241,9 +234,6 @@ npm run wellfound
 | `node index.js naukri --live` | `npm run naukri` | **Naukri Live**: Runs FastApply on Naukri |
 | `node index.js naukri` | `npm run dry:naukri` | **Naukri Dry Run**: Tests Naukri without submitting |
 | `node index.js naukri login` | `npm run login:naukri` | One-time login to Naukri |
-| `node index.js wellfound --live` | `npm run wellfound` | **Wellfound Live**: Runs auto-applier on Wellfound |
-| `node index.js wellfound` | `npm run dry:wellfound` | **Wellfound Dry Run**: Tests Wellfound without submitting |
-| `node index.js wellfound login` | `npm run login:wellfound` | One-time login to Wellfound |
 | `node index.js all --live --offscreen` | `npm run offscreen` | Runs all platforms offscreen without stealing active window focus |
 
 ---
@@ -278,7 +268,7 @@ Unregister-ScheduledTask AutoApplyDaily  # Delete schedule
 - **Bot pauses on an unknown question:**
   - Check the browser window or the Web Dashboard modal. Type your answer and click **Save & Resume** — it will be permanently remembered in `qa-bank.json`.
 - **Reset daily quota counters:**
-  - Counters automatically reset each day. To manually reset, delete `apply-state-wellfound.json`, `apply-state-naukri.json`, or `apply-state-indeed.json`.
+  - Counters automatically reset each day. To manually reset, delete `apply-state-naukri.json` or `apply-state-indeed.json`.
 
 ---
 
