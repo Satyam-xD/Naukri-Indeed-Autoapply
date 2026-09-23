@@ -439,6 +439,26 @@ async function handleIndeedApplyFlow(company, title) {
       } catch (_) { return ''; }
     })();
 
+    // Log step progress indicator if present (Step X of N)
+    const stepIndicator = scopeEl.querySelector('[class*="steps" i], [class*="progress" i], [aria-label*="step" i]');
+    const stepText = stepIndicator?.textContent?.trim()?.match(/step\s*(\d+)\s*(?:of|\/)\s*(\d+)/i);
+    if (stepText) {
+      log(`  📋 Apply progress: Step ${stepText[1]} of ${stepText[2]}`);
+    }
+
+    // Handle file upload step — Indeed remembers resume from profile, skip gracefully
+    const fileInput = scopeEl.querySelector('input[type="file"]');
+    if (fileInput && visible(fileInput)) {
+      log(`  📎 File upload field detected — skipping (Indeed uses resume on file)`);
+      // Don't block on file upload — try to find a Continue/Skip button to move past it
+      const skipBtn = findButtonByText(scopeEl, /continue|next|skip|proceed/i);
+      if (skipBtn && visible(skipBtn) && !skipBtn.disabled) {
+        skipBtn.click();
+        await sleep(1500);
+      }
+      continue;
+    }
+
     // Check if application is already successful
     if (INDEED_SUCCESS_RE.test(bodyText)) {
       log(`  ✅ Application sent for "${title}" @ ${company}`);
@@ -568,6 +588,12 @@ async function applyOnIndeedJob(cardObj) {
       '#jobsearch-ViewjobPaneWrapper, .jobsearch-RightPane, [data-testid="jobsearch-ViewjobPaneWrapper"], #viewJobSSRRoot, .jobsearch-JobComponent'
     ) || document;
 
+    // Check for already-applied state first
+    const appliedState = detailsPane.querySelector(
+      'button[aria-label*="applied" i], [data-testid="already-applied"], [class*="alreadyApplied" i]'
+    );
+    if (appliedState) return null; // signal to skip
+
     const btn =
       detailsPane.querySelector('#indeedApplyButton') ||
       detailsPane.querySelector('button[id*="indeedApply" i]') ||
@@ -575,13 +601,15 @@ async function applyOnIndeedJob(cardObj) {
       detailsPane.querySelector('[data-testid="apply-button"]') ||
       detailsPane.querySelector('.indeed-apply-button') ||
       detailsPane.querySelector('button[class*="IndeedApplyButton" i]') ||
+      detailsPane.querySelector('button[data-dd-action-name*="apply" i]') ||
+      detailsPane.querySelector('a[href*="indeedapply"]') ||
       findButtonByText(detailsPane, /^Apply now$|^Easily apply$|^Apply with Indeed$|^Apply with your Indeed Resume$/i);
 
     if (!btn || !visible(btn)) return null;
     if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') return null;
 
     const text = (btn.textContent || btn.value || '').trim();
-    if (/^loading|^wait/i.test(text)) return null;
+    if (/^loading|^wait|^applied$/i.test(text)) return null;
 
     return btn;
   }, 8000, 400);
@@ -592,7 +620,13 @@ async function applyOnIndeedJob(cardObj) {
     const externalBtn = allButtons.find(
       (el) => /apply on company site/i.test(el.textContent?.trim() || '')
     );
-    if (externalBtn) {
+    // Detect "Applied" / "Already Applied" state
+    const alreadyApplied = allButtons.find(
+      (el) => /^(?:applied|you applied|already applied)$/i.test((el.textContent?.trim() || el.getAttribute('aria-label') || ''))
+    );
+    if (alreadyApplied) {
+      log(`  ⏩ Already applied to "${title}" — skipping`);
+    } else if (externalBtn) {
       log(`  ⏩ Skipping external company application for "${title}"`);
     } else {
       log(`  ⚠ No Indeed Apply button found for "${title}"`);

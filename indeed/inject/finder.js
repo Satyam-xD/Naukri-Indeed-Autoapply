@@ -143,7 +143,7 @@ function parseIndeedCard(card, seenHrefs) {
 
   var fullCardText = card.innerText || '';
 
-  // "Easily apply" detection
+  // "Easily apply" detection — multiple Indeed badge layouts
   var hasEasilyApply = !!(
     card.querySelector('span.iaIcon') ||
     card.querySelector('[data-testid="indeedApply"]') ||
@@ -151,6 +151,9 @@ function parseIndeedCard(card, seenHrefs) {
     card.querySelector('[class*="indeedApply"]') ||
     card.querySelector('[class*="EasyApply"]') ||
     card.querySelector('[class*="easyApply"]') ||
+    card.querySelector('[data-testid="easy-apply-label"]') ||
+    card.querySelector('[class*="ia-badge" i]') ||
+    card.querySelector('span[class*="label" i][class*="apply" i]') ||
     /easily apply|apply with your indeed resume|indeed apply/i.test(fullCardText)
   );
 

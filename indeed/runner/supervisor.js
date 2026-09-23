@@ -123,7 +123,8 @@ function startClickRelay(mainPage, log, getJob) {
         return;
       }
       tick++;
-      if (tick % 6 === 0) {
+      // Check Cloudflare every ~10s (30 ticks × 350ms) instead of every 2s
+      if (tick % 30 === 0) {
         await tryAutoSolveCloudflare(mainPage, log).catch(() => {});
       }
 
@@ -472,6 +473,18 @@ async function runSupervisor({
       await new Promise((r) => setTimeout(r, 3000));
       if (!mainPage.isClosed()) {
         await mainPage.evaluate(script).catch((e) => log(`Rotate eval error: ${e.message}`));
+      }
+      continue;
+    }
+
+    // Force re-inject if page is on a valid URL, not busy, and has been semi-idle for 2+ min
+    // (catches cases where injected script died silently without setting __aaFinished)
+    const FORCE_REINJECT_MS = 2 * 60 * 1000;
+    if (!busy && idleMs > FORCE_REINJECT_MS && site.injectOn(mainPage.url())) {
+      log(`🔄 Script may have died silently (${(idleMs/1000).toFixed(0)}s idle) — force re-injecting...`);
+      state.lastActivity = Date.now();
+      if (!mainPage.isClosed()) {
+        await mainPage.evaluate(script).catch((e) => log(`Force re-inject error: ${e.message}`));
       }
       continue;
     }

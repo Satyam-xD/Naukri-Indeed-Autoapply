@@ -11,6 +11,12 @@ function log(...args) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function humanDelay() {
+  // In dry-run mode skip the full human delay — no need to appear human
+  if (typeof CONFIG !== 'undefined' && CONFIG.DRY_RUN) {
+    log('⏳ [Timer] DRY_RUN — skipping human delay');
+    await sleep(1200);
+    return;
+  }
   const min = CONFIG.MIN_DELAY_MS ?? 5000;
   const max = Math.max(min, CONFIG.MAX_DELAY_MS ?? 10000);
   const totalMs = min + Math.random() * (max - min);
@@ -284,12 +290,40 @@ const FACTUAL_QA = [
   [/languages? (known|spoken|proficiency)/i, 'English, Hindi'],
   [/willing to work (from )?office|in-?office/i, 'Yes'],
 
-  // ── Misc ─────────────────────────────────────────────────────────────────
+  // ── Misc / additional ─────────────────────────────────────────────────────
   [/are you a fresher|fresher candidate/i,
     'Yes, I am a fresher with hands-on full-stack development experience.'],
   [/date of birth|dob|birthday/i, CV.dob || ''],
   [/hear.{0,20}(this|about)|come across.{0,20}(job|position)/i, CV.linkedin || CV.github],
+
+  // ── Employment status ────────────────────────────────────────────────────
+  [/currently employed|are you employed|employment status/i, 'Yes, currently interning.'],
+  [/gap in (employment|career)|career gap/i, 'No significant gap — I have been interning and building projects.'],
+
+  // ── Salary negotiation ────────────────────────────────────────────────────
+  [/salary negotiable|open to discussion/i, 'Yes, open to discussion.'],
+  [/annual package|annual salary|annual ctc/i, CV.expectedSalary || '4-6 LPA'],
+
+  // ── Academic marks ────────────────────────────────────────────────────────
+  [/12th.*(?:marks|percentage|score)|hsc.*(?:marks|percentage)/i, '82'],
+  [/10th.*(?:marks|percentage|score)|ssc.*(?:marks|percentage)/i, '85'],
+
+  // ── Availability & joining ────────────────────────────────────────────────
+  [/when.*available|when.*join|earliest.*join/i, CV.startDate || 'Immediately'],
+  [/shift|rotational|night\s*shift/i, 'Yes, I am open to any shift timings.'],
+  [/bond|service agreement|lock.?in/i, 'Yes, I am open to signing a bond if required.'],
+
+  // ── Technical specifics ────────────────────────────────────────────────────
+  [/primary tech|primary framework|preferred stack/i,
+    'MERN stack (MongoDB, Express, React, Node.js) with Python for AI/ML tasks.'],
+  [/describe your project|tell.{0,10}project/i,
+    (CV.highlights || [])[0] || 'Built end-to-end full-stack applications using React and Node.js.'],
+  [/hobby|interests|outside.*work|personal interests/i,
+    'Open source contributions, competitive programming, reading tech blogs, and building side projects.'],
+  [/pincode|postal code|area code/i, CV.zipcode || '400001'],
+  [/area|locality|locality name/i, (CV.street || '').split(',')[0].trim() || 'Main Area'],
 ];
+
 
 const GENERIC_ANSWER = (() => {
   const hPart = CV.highlights.slice(0, 2).filter(Boolean).join('; ');
@@ -376,13 +410,14 @@ function emitQARecord(item) {
 }
 
 const _sharedGeminiCache = (() => {
-  try { return new Map(JSON.parse(sessionStorage.getItem('_aaSharedCache') || '[]')); }
+  // Use localStorage so cache survives page navigations within the same session
+  try { return new Map(JSON.parse(localStorage.getItem('_aaGeminiCache') || '[]')); }
   catch (_) { return new Map(); }
 })();
 
 function _cacheSet(k, v) {
   _sharedGeminiCache.set(k, v);
-  try { sessionStorage.setItem('_aaSharedCache', JSON.stringify([..._sharedGeminiCache.entries()].slice(-120))); } catch (_) {}
+  try { localStorage.setItem('_aaGeminiCache', JSON.stringify([..._sharedGeminiCache.entries()].slice(-200))); } catch (_) {}
 }
 
 function playAlertBeep() {

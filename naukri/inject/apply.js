@@ -105,6 +105,19 @@ async function applyOnJobDetailsPage() {
   log(`  🖱 Clicked Apply on job page: "${title}" @ ${company}`);
   await sleep(2000);
 
+  // 6b. Detect OTP / verification step — pause so user can complete it
+  const otpInput = await waitFor(
+    () => document.querySelector('input[name*="otp" i], input[placeholder*="otp" i], input[placeholder*="one time" i], input[autocomplete="one-time-code"]'),
+    3000, 500
+  );
+  if (otpInput && visible(otpInput)) {
+    log(`  🛎 OTP / verification step detected — pausing for manual input!`);
+    if (typeof promptUserForAnswer === 'function') {
+      await promptUserForAnswer('OTP / Verification code required — enter the code sent to your phone/email, then click Save.');
+    }
+    await sleep(3000);
+  }
+
   // 7. Handle chatbot / questionnaire steps — up to 15 steps
   let attempts = 0;
   while (attempts < 15) {
@@ -322,6 +335,10 @@ async function fillNaukriQuestionnaire(container) {
       val = CV.state || 'Maharashtra';
     } else if (/zip|postal/i.test(label)) {
       val = CV.zipcode || '400001';
+    } else if (/pincode/i.test(label)) {
+      val = CV.zipcode || '400001';
+    } else if (/area|locality/i.test(label)) {
+      val = (CV.street || '').split(',')[0].trim() || 'Main Area';
     } else if (/\bcountry\b/i.test(label)) {
       val = CV.country || 'India';
     // ── Salary (LinkedIn-style: current / expected, lakh / monthly / raw) ────────

@@ -2,16 +2,47 @@
 // NAUKRI MAIN LOOP — orchestrates discovery, navigation, apply, and delays.
 // ============================================================
 
-const NAUKRI_SEEN_KEY = 'naukri_autoApply_seen_v2';  // v2 = fresh start after likelyExternal fix
+// v3 = timestamped entries with 7-day expiry
+const NAUKRI_SEEN_KEY = 'naukri_autoApply_seen_v3';
+const SEVEN_DAYS_MS   = 7 * 24 * 60 * 60 * 1000;
 
-// Keep last 800 seen hrefs; trim on every write so the key never bloats.
-const naukriSeen = new Set(JSON.parse(localStorage.getItem(NAUKRI_SEEN_KEY) || '[]'));
+// Load and prune entries older than 7 days
+const _nowTs = Date.now();
+const _rawSeen = (() => {
+  try { return JSON.parse(localStorage.getItem(NAUKRI_SEEN_KEY) || '[]'); }
+  catch (_) { return []; }
+})();
+// Support both old plain-string format and new [href, ts] format
+const naukriSeenMap = new Map(
+  (Array.isArray(_rawSeen) ? _rawSeen : [])
+    .filter((e) => Array.isArray(e) ? (_nowTs - e[1] < SEVEN_DAYS_MS) : true)
+    .map((e)   => Array.isArray(e) ? e : [e, _nowTs])
+);
+const naukriSeen = new Set(naukriSeenMap.keys());
+
+/**
+ * Extract a stable dedup key from a Naukri job URL.
+ * Strips query params and prefers the numeric job ID from the slug.
+ */
+function naukriJobKey(href) {
+  if (!href) return href;
+  const clean = href.split('?')[0].split('#')[0];
+  // e.g. /job-listings-software-engineer-company-123456789012
+  const m = clean.match(/-([0-9]{8,12})$/);
+  return m ? 'nk_' + m[1] : clean;
+}
 
 function markNaukriSeen(href) {
   if (!href) return;
-  naukriSeen.add(href);
+  const key = naukriJobKey(href);
+  naukriSeen.add(key);
+  naukriSeen.add(href)          // also mark full href for backwards compat
+  naukriSeenMap.set(key, Date.now());
   try {
-    localStorage.setItem(NAUKRI_SEEN_KEY, JSON.stringify([...naukriSeen].slice(-800)));
+    localStorage.setItem(
+      NAUKRI_SEEN_KEY,
+      JSON.stringify([...naukriSeenMap.entries()].slice(-800))
+    );
   } catch (_) {}
 }
 
@@ -206,10 +237,11 @@ if (isJobPage) {
   await waitFor(() => findNaukriJobRows().length > 0, 7000, 500);
 
   const isEligible = (j) => {
-    const cleanHref = j.href.split('?')[0];
+    const key = naukriJobKey(j.href);
     return (
+      !naukriSeen.has(key) &&
       !naukriSeen.has(j.href) &&
-      !naukriSeen.has(cleanHref) &&
+      !naukriSeen.has(j.href.split('?')[0]) &&
       !j.likelyExternal &&
       isNaukriTitleOk(j.title, j.snippet)
     );
@@ -256,17 +288,23 @@ if (isJobPage) {
 
   // ── Paginate or rotate URL ────────────────────────────────────────────────
   if (!eligible.length) {
-    // Try Next Page button first
-    const nextBtn = [...document.querySelectorAll('a, button')]
-      .filter(visible)
-      .find((a) =>
-        /next\s*(page)?$/i.test(a.textContent.trim()) ||
-        a.getAttribute('aria-label') === 'Next' ||
-        a.getAttribute('title') === 'Next'
-      );
+    // Try Next Page button first — use a wide set of selectors
+    const nextBtn = (
+      document.querySelector('a[aria-label="Next"], button[aria-label="Next"]') ||
+      document.querySelector('[class*="pagination"] a:last-child') ||
+      document.querySelector('[class*="pagination-next" i]') ||
+      [...document.querySelectorAll('a, button')]
+        .filter(visible)
+        .find((a) =>
+          /^\s*next\s*(page)?\s*$/i.test(a.textContent.trim()) ||
+          a.getAttribute('title') === 'Next'
+        )
+    );
 
-    if (nextBtn) {
+    if (nextBtn && visible(nextBtn)) {
       log('📄 Next page →');
+      nextBtn.scrollIntoView({ block: 'center' });
+      await sleep(400);
       nextBtn.click();
       await sleep(2500);
       return;
@@ -277,29 +315,50 @@ if (isJobPage) {
     return;
   }
 
-  // ── Pick and apply to the best eligible job ───────────────────────────────
-  const job = eligible[0];
-  markNaukriSeen(job.href);
-  markNaukriSeen(job.href.split('?')[0]);
+  // ── Pick and apply to eligible jobs ──────────────────────────────────────
+  // Separate cards into two buckets:
+  //   A) Cards with a direct Apply button  — can batch in one cycle
+  //   B) Cards without a button            — must navigate to job page
+  const btnCards    = eligible.filter((j) => !j.isExternal && !j.likelyExternal && j.applyBtn && visible(j.applyBtn));
+  const noBtn       = eligible.filter((j) => !j.isExternal && !j.likelyExternal && !(j.applyBtn && visible(j.applyBtn)));
+  const skipList    = eligible.filter((j) => j.isExternal || j.likelyExternal);
 
-  log(`▶ Target: "${job.title}" @ ${job.company} | ${job.expRequired || ''} | ${job.salary || ''}`);
+  // Log skips
+  for (const j of skipList) {
+    markNaukriSeen(j.href);
+    log(`  ⏭ Ext skip — ${j.title} @ ${j.company}`);
+  }
 
-  if (job.isExternal || job.likelyExternal) {
-    // Confirmed external → skip, don't reload (we already marked seen)
-    log(`  ⏭ External skip — moving on`);
-    return; // supervisor will re-inject and find next eligible
+  if (btnCards.length > 0) {
+    // ── BATCH: apply to all button-cards in one inject cycle ──────────────────────
+    log(`📊 Processing ${btnCards.length} quick-apply card(s) + ${noBtn.length} page-nav card(s)`);
+    let batchApplied = 0;
 
-  } else if (job.applyBtn && visible(job.applyBtn)) {
-    // Has a card-level Apply button → Quick Apply without navigating
-    log(`  📌 Quick Apply from card`);
-    const ok = await applyDirectOnCard(job);
-    if (ok) await humanDelay();
-    // Reload so the script re-injects and picks next card
+    for (const job of btnCards) {
+      markNaukriSeen(job.href);
+      log(`▶ [${batchApplied + 1}] Quick Apply: "${job.title}" @ ${job.company} | ${job.salary || ''}`);
+
+      const ok = await applyDirectOnCard(job);
+      if (ok) {
+        batchApplied++;
+        await humanDelay();
+      } else {
+        await sleep(800);
+      }
+
+      // Safety: check we haven't navigated away from a search page
+      if (!/naukri\.com/.test(location.href)) break;
+    }
+
+    log(`✔ Batch done: ${batchApplied}/${btnCards.length} applied via card buttons`);
     window.location.reload();
 
-  } else {
-    // No card button (most Naukri cards) → navigate to detail page
-    // apply.js will handle it there, including external early-bail
+  } else if (noBtn.length > 0) {
+    // ── NAVIGATE: go to job detail page for first no-button card ────────────────
+    const job = noBtn[0];
+    markNaukriSeen(job.href);
+
+    log(`▶ Target: "${job.title}" @ ${job.company} | ${job.expRequired || ''} | ${job.salary || ''}`);
     log(`  🌐 Navigating to job page: ${job.href.slice(0, 80)}`);
     sessionStorage.setItem('naukri_last_search', location.href);
     location.href = job.href;
