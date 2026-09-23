@@ -564,15 +564,33 @@ const server = http.createServer(async (req, res) => {
       const target = platform || site;
       let stoppedCount = 0;
 
+      const terminateChild = (proc) => {
+        if (!proc) return;
+        try {
+          if (process.platform === 'win32' && proc.pid) {
+            spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F']);
+          } else {
+            proc.kill('SIGTERM');
+          }
+        } catch (_) {
+          try { proc.kill(); } catch (_) {}
+        }
+      };
+
       if (target && activeProcesses[target]) {
-        try { activeProcesses[target].kill(); } catch (_) {}
+        terminateChild(activeProcesses[target]);
         activeProcesses[target] = null;
         stoppedCount++;
         addLog(`🛑 Stopped runner: ${target}`, target, 'warn');
+      } else if (target && target !== 'all' && activeProcesses.all) {
+        terminateChild(activeProcesses.all);
+        activeProcesses.all = null;
+        stoppedCount++;
+        addLog(`🛑 Stopped combined runner (was running ${target}).`, 'system', 'warn');
       } else {
         for (const [k, p] of Object.entries(activeProcesses)) {
           if (p) {
-            try { p.kill(); } catch (_) {}
+            terminateChild(p);
             activeProcesses[k] = null;
             stoppedCount++;
           }

@@ -721,6 +721,26 @@ window.startRunner = async function(platform, liveMode) {
   }
 };
 
+window.stopRunner = async function(platform) {
+  showToast(`Stopping ${platform} runner...`);
+  try {
+    const res = await fetch('/api/runner/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform })
+    });
+    const data = await res.json();
+    if (data.stoppedCount > 0) {
+      showToast(`🛑 ${platform.toUpperCase()} runner stopped`);
+    } else {
+      showToast(`${platform.toUpperCase()} was not running`);
+    }
+    setTimeout(fetchStats, 800);
+  } catch (err) {
+    showToast(`Error stopping ${platform}: ${err.message}`);
+  }
+};
+
 window.stopAllRunners = async function() {
   showToast('Stopping runners...');
   try {
